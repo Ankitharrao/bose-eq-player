@@ -3,10 +3,12 @@
 A Flutter music player with a real-time 3-band equalizer, built for the
 Bose Professional *Software Development Intern – Frontend Applications* challenge.
 
-> **Status: work in progress.** Playback of the bundled tracks and the player
-> screen are implemented. The equalizer engine is built and verified on a
-> physical device, but its slider panel is not in the UI yet. Device file
-> picking is not implemented. See the checklist below for exactly what works today.
+> **Status: work in progress.** Playback of the bundled tracks, the player
+> screen (with swipe gestures) and the EQ sheet (three sliders, presets and a
+> response curve) are implemented. The equalizer engine is verified on a
+> physical device; the latest UI and the crackle fix still need checking by ear.
+> Device file picking is not implemented. See the checklist below for exactly
+> what works today.
 
 ## Target platform
 
@@ -26,7 +28,7 @@ Tested by ear on one device: **Samsung SM-S911B, Android 14**.
 | Play bundled tracks or tracks picked from the device | Bundled tracks: done. Device picking: not implemented yet |
 | Play / pause, seek, next, previous | Done |
 | Show track name, elapsed time and total duration | Done |
-| Three EQ bands (Low, Mid, High), each with a slider | Controller done; slider panel not in the UI yet |
+| Three EQ bands (Low, Mid, High), each with a slider | Done (EQ sheet, plus presets and a response curve); not yet re-checked on device |
 | EQ audibly changes the sound in real time | Verified on device |
 | Reset EQ restores a flat response | Implemented; verification pending |
 | Clearly documented target platform | Done (this file) |
@@ -55,6 +57,7 @@ lib/
   app.dart                        # MaterialApp and theme
   core/
     theme/                        # colour palette, text styles, ThemeData
+    widgets/press_scale.dart      # shared press-shrink feedback for buttons
     format_duration.dart          # mm:ss / h:mm:ss time labels
   data/
     track.dart                    # Track model and the bundled track list
@@ -63,7 +66,13 @@ lib/
     equalizer_controller.dart     # 3-band EQ logic (no UI)
   features/player/
     player_screen.dart            # now-playing screen (phone and wide layouts)
-    widgets/                      # artwork, seek bar, transport controls
+    widgets/                      # swipeable artwork, track dots, seek bar,
+                                  # transport controls, "up next" card
+  features/equalizer/
+    eq_panel.dart                 # EQ bottom sheet: curve, presets, sliders, Reset
+    eq_presets.dart               # Flat, Bass, Vocal, Treble, Warm
+    widgets/                      # band slider, response curve, top-bar EQ pill
+test/                             # widget tests
 assets/
   audio/                          # bundled tracks (placeholders, not committed)
   fonts/                          # Space Grotesk, Inter
@@ -78,11 +87,32 @@ The separation of concerns:
   throw: failures are logged, and load errors are shown in an on-screen banner.
   "Previous" restarts the current track if it has played for more than 3
   seconds. When a track ends, the next one starts.
-- **`EqualizerController`** owns the three slider values and applies them to the hardware.
+- **`EqualizerController`** owns the three slider values and applies them to
+  the hardware. Moving a slider only updates the UI; the hardware is written
+  when the slider is released (see "Challenges"). Presets set all three
+  sliders at once.
 - **`features/player/`** listens to the engine with `ListenableBuilder` and
-  `StreamBuilder`. The layout switches to artwork beside the controls at widths of 720 px and up.
+  `StreamBuilder`. Widgets are split into small classes rather than
+  build-helper methods. The layout switches to artwork beside the controls at widths of 720 px and up.
 
-The EQ panel and device file picking are planned and will be added under `lib/features/`.
+Device file picking is planned and will be added under `lib/features/`.
+
+## Using the app
+
+| Gesture | Where | Does |
+|---|---|---|
+| Swipe left / right | Artwork | Next / previous track |
+| Tap | Artwork | Play / pause |
+| Tap a dot | Under the artwork | Jump to that track |
+| Tap | "Up next" card | Skip to the next track |
+| Tap the EQ pill, or swipe up on "Swipe up for EQ" | Top bar / bottom of the screen | Open the equalizer |
+| Tap a preset | EQ sheet | Flat, Bass, Vocal, Treble or Warm |
+| Double-tap a dB value | EQ sheet | Reset that band to 0 dB |
+
+The EQ pill's three mini bars mirror the current Low / Mid / High gains. The
+curve in the EQ sheet is an illustration of the slider settings, not a
+measurement of the device's filters. Controls give haptic feedback, and the
+artwork's motion stops when the system "remove animations" setting is on.
 
 ## EQ implementation
 
@@ -134,7 +164,16 @@ with all sliders untouched. Two mitigations have been tried and neither removed 
 2. Ramping the hardware gain towards the target in small steps.
 
 The cause has not been confirmed. Zipper noise from abrupt filter-gain changes
-is the leading hypothesis. See `docs/NOTES.md` for the experiment log.
+is the leading hypothesis.
+
+Current fix (verification by ear pending): the hardware is no longer written
+during a drag. The slider moves freely and the new gain is applied once when the
+finger lifts, so the sound changes on release rather than continuously.
+
+To compare write strategies by ear, run with
+`flutter run --dart-define=EQ_COMPARE=true`. The EQ sheet then shows a picker:
+Release (default), every 200 ms, every 100 ms, or on every movement. See
+`docs/NOTES.md` for the experiment log.
 
 **Device not starting flat.** See "Flat start and reset" above.
 
@@ -144,10 +183,11 @@ Requirements: Flutter SDK, Android Studio, an Android device with USB debugging
 enabled (a physical device is recommended for judging the equalizer).
 
 ```bash
-git clone https://github.com/<your-username>/bose-eq-player.git
+git clone https://github.com/Ankitharrao/bose-eq-player.git
 cd bose-eq-player
 flutter pub get
-flutter run
+flutter run            # add --release for the most accurate audio behaviour
+flutter test           # widget tests
 ```
 
 Place two test tracks at `assets/audio/test.mp3` and `assets/audio/test2.mp3`
@@ -160,8 +200,6 @@ Use headphones to hear equalizer changes clearly.
   analysis, package and platform research, architecture planning, code drafts
   and debugging help. Package capabilities were checked against official
   documentation, and all code was run and tested by the author on a physical device.
-
-
 
 ## Credits
 

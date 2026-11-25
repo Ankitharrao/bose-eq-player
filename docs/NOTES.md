@@ -26,6 +26,8 @@ A running log of decisions and experiments. Feeds the README's "Challenges" sect
 - Attempt 2, ramping the hardware gain toward the target at 0.75 dB per 20 ms: no change.
 - Not yet tried: applying the gain only when the finger lifts, smaller step sizes, a release build.
 - Cause unconfirmed. Zipper noise is the leading hypothesis.
+- Attempt 3, apply on release: sliders move freely in the UI and the hardware is written once, when the finger lifts (one `setGain` per hardware band, no ramp). The ramp from attempt 2 was removed because it adds a write every 20 ms. Trade-off: the sound changes on release, not during the drag. Result by ear: pending.
+- Comparison aid: run with `--dart-define=EQ_COMPARE=true` to show a picker in the EQ sheet: Release (default), 200 ms, 100 ms, Live (every movement). Results by ear per mode: pending.
 
 ## To do next
 - Playback engine, then player UI, then EQ panel, then device file picking and error states.
