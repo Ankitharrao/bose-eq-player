@@ -3,9 +3,10 @@
 A Flutter music player with a real-time 3-band equalizer, built for the
 Bose Professional *Software Development Intern – Frontend Applications* challenge.
 
-> **Status: work in progress.** The equalizer engine is built and verified on a
-> physical device. The player UI, track playback and device file picking are
-> not implemented yet. See the checklist below for exactly what works today.
+> **Status: work in progress.** Playback of the bundled tracks and the player
+> screen are implemented. The equalizer engine is built and verified on a
+> physical device, but its slider panel is not in the UI yet. Device file
+> picking is not implemented. See the checklist below for exactly what works today.
 
 ## Target platform
 
@@ -22,10 +23,10 @@ Tested by ear on one device: **Samsung SM-S911B, Android 14**.
 
 | Requirement | Status |
 |---|---|
-| Play bundled tracks or tracks picked from the device | Not implemented yet |
-| Play / pause, seek, next, previous | Not implemented yet |
-| Show track name, elapsed time and total duration | Not implemented yet |
-| Three EQ bands (Low, Mid, High), each with a slider | Controller done; styled UI not built yet |
+| Play bundled tracks or tracks picked from the device | Bundled tracks: done. Device picking: not implemented yet |
+| Play / pause, seek, next, previous | Done |
+| Show track name, elapsed time and total duration | Done |
+| Three EQ bands (Low, Mid, High), each with a slider | Controller done; slider panel not in the UI yet |
 | EQ audibly changes the sound in real time | Verified on device |
 | Reset EQ restores a flat response | Implemented; verification pending |
 | Clearly documented target platform | Done (this file) |
@@ -35,7 +36,7 @@ Tested by ear on one device: **Samsung SM-S911B, Android 14**.
 
 | Package | Purpose | Used in code yet? |
 |---|---|---|
-| `just_audio` | Playback and the Android equalizer effect | Yes (equalizer) |
+| `just_audio` | Playback and the Android equalizer effect | Yes |
 | `audio_session` | Audio focus: phone calls, headphone unplug | Installed, not wired up yet |
 | `file_picker` | Choose tracks from device storage via the system picker | Installed, not wired up yet |
 
@@ -50,12 +51,21 @@ classes consumed with `ListenableBuilder`.
 
 ```
 lib/
-  main.dart                       # currently a temporary EQ test harness
-  core/theme/                     # colour palette, text styles, ThemeData
+  main.dart                       # creates the audio engine and EQ, then runs the app
+  app.dart                        # MaterialApp and theme
+  core/
+    theme/                        # colour palette, text styles, ThemeData
+    format_duration.dart          # mm:ss / h:mm:ss time labels
+  data/
+    track.dart                    # Track model and the bundled track list
   audio/
+    audio_engine.dart             # player, track list, next/previous, errors
     equalizer_controller.dart     # 3-band EQ logic (no UI)
+  features/player/
+    player_screen.dart            # now-playing screen (phone and wide layouts)
+    widgets/                      # artwork, seek bar, transport controls
 assets/
-  audio/                          # bundled tracks (to be added, licensed)
+  audio/                          # bundled tracks (placeholders, not committed)
   fonts/                          # Space Grotesk, Inter
 ```
 
@@ -63,10 +73,16 @@ The separation of concerns:
 
 - **UI** only talks to controllers and never imports `just_audio` directly.
 - **`audio/`** is the only place that touches `just_audio`.
+- **`AudioEngine`** owns the `just_audio` player, the track list and the
+  equalizer effect. UI commands (play, pause, seek, next, previous) never
+  throw: failures are logged, and load errors are shown in an on-screen banner.
+  "Previous" restarts the current track if it has played for more than 3
+  seconds. When a track ends, the next one starts.
 - **`EqualizerController`** owns the three slider values and applies them to the hardware.
+- **`features/player/`** listens to the engine with `ListenableBuilder` and
+  `StreamBuilder`. The layout switches to artwork beside the controls at widths of 720 px and up.
 
-A playback engine, a player controller, and the player and EQ screens are planned
-and will be added in `lib/audio/` and `lib/features/`.
+The EQ panel and device file picking are planned and will be added under `lib/features/`.
 
 ## EQ implementation
 
@@ -134,7 +150,8 @@ flutter pub get
 flutter run
 ```
 
-Place a test track at `assets/audio/test.mp3` (it is not committed to this repository).
+Place two test tracks at `assets/audio/test.mp3` and `assets/audio/test2.mp3`
+(they are not committed to this repository; the list lives in `lib/data/track.dart`).
 Use headphones to hear equalizer changes clearly.
 
 ## AI tools used
