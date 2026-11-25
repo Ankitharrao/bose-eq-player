@@ -29,7 +29,18 @@ A running log of decisions and experiments. Feeds the README's "Challenges" sect
 - Attempt 3, apply on release: sliders move freely in the UI and the hardware is written once, when the finger lifts (one `setGain` per hardware band, no ramp). The ramp from attempt 2 was removed because it adds a write every 20 ms. Trade-off: the sound changes on release, not during the drag. Result by ear: pending.
 - Comparison aid: run with `--dart-define=EQ_COMPARE=true` to show a picker in the EQ sheet: Release (default), 200 ms, 100 ms, Live (every movement). Results by ear per mode: pending.
 
+### Device file picking
+- `file_picker` 13 on Android uses the Storage Access Framework; by default it copies each picked file into the app cache and returns a `file://` path, so `setFilePath` works and no storage permission is needed.
+- Picked tracks are appended and the first plays. Not persisted across restarts (cache copies may be cleared by the OS).
+- Result on device: pending.
+
+### Audio focus and headphone unplugging
+- just_audio handles interruptions by default, but silently and only after configuring the session on first play.
+- Decision: configure `AudioSessionConfiguration.music()` at startup, turn off `handleInterruptions`, and apply our own rules in `AudioFocusHandler` (pure, unit-tested). The UI shows a message when unplugging or another app stops playback.
+- Ducking is left to Android (automatic for media on 8+), as just_audio also does for media usage.
+- Result on device: pending (unplug wired headphones, disconnect Bluetooth, receive a call, start another music app).
+
 ## To do next
-- Playback engine, then player UI, then EQ panel, then device file picking and error states.
+- Check on device: new UI, crackle write modes, device file picking, audio focus.
 - Verify Reset EQ by ear and update the README checklist.
 - Add licensed bundled tracks and credits.

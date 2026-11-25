@@ -3,12 +3,13 @@
 A Flutter music player with a real-time 3-band equalizer, built for the
 Bose Professional *Software Development Intern – Frontend Applications* challenge.
 
-> **Status: work in progress.** Playback of the bundled tracks, the player
-> screen (with swipe gestures) and the EQ sheet (three sliders, presets and a
-> response curve) are implemented. The equalizer engine is verified on a
-> physical device; the latest UI and the crackle fix still need checking by ear.
-> Device file picking is not implemented. See the checklist below for exactly
-> what works today.
+> **Status: work in progress.** Implemented: playback of bundled tracks and
+> tracks picked from the device, the player screen (with swipe gestures), the
+> EQ sheet (three sliders, presets and a response curve), and audio focus
+> handling (phone calls, other apps, headphone unplugging). The equalizer engine
+> is verified on a physical device; the latest UI, the crackle fix, file picking
+> and audio focus still need checking on the device. See the checklist below for
+> exactly what works today.
 
 ## Target platform
 
@@ -25,12 +26,13 @@ Tested by ear on one device: **Samsung SM-S911B, Android 14**.
 
 | Requirement | Status |
 |---|---|
-| Play bundled tracks or tracks picked from the device | Bundled tracks: done. Device picking: not implemented yet |
+| Play bundled tracks or tracks picked from the device | Done (device picking not yet checked on device) |
 | Play / pause, seek, next, previous | Done |
 | Show track name, elapsed time and total duration | Done |
 | Three EQ bands (Low, Mid, High), each with a slider | Done (EQ sheet, plus presets and a response curve); not yet re-checked on device |
 | EQ audibly changes the sound in real time | Verified on device |
 | Reset EQ restores a flat response | Implemented; verification pending |
+| Audio focus: pause for calls and other apps, pause on headphone unplug (extra) | Done, unit-tested; not yet checked on device |
 | Clearly documented target platform | Done (this file) |
 | Demo video (5 minutes or less) | Not recorded yet |
 
@@ -39,8 +41,8 @@ Tested by ear on one device: **Samsung SM-S911B, Android 14**.
 | Package | Purpose | Used in code yet? |
 |---|---|---|
 | `just_audio` | Playback and the Android equalizer effect | Yes |
-| `audio_session` | Audio focus: phone calls, headphone unplug | Installed, not wired up yet |
-| `file_picker` | Choose tracks from device storage via the system picker | Installed, not wired up yet |
+| `audio_session` | Audio focus: phone calls, headphone unplug | Yes |
+| `file_picker` | Choose tracks from device storage via the system picker | Yes |
 
 Fonts (Space Grotesk and Inter, from Google Fonts) are bundled as assets rather
 than fetched at runtime, so the app renders identically offline. See each
@@ -61,8 +63,10 @@ lib/
     format_duration.dart          # mm:ss / h:mm:ss time labels
   data/
     track.dart                    # Track model and the bundled track list
+    device_tracks.dart            # system file picker -> tracks
   audio/
     audio_engine.dart             # player, track list, next/previous, errors
+    audio_focus.dart              # rules for calls, other apps, unplugging
     equalizer_controller.dart     # 3-band EQ logic (no UI)
   features/player/
     player_screen.dart            # now-playing screen (phone and wide layouts)
@@ -72,6 +76,8 @@ lib/
     eq_panel.dart                 # EQ bottom sheet: curve, presets, sliders, Reset
     eq_presets.dart               # Flat, Bass, Vocal, Treble, Warm
     widgets/                      # band slider, response curve, top-bar EQ pill
+  features/library/
+    add_music_button.dart         # "+" button / empty-state button for picking
 test/                             # widget tests
 assets/
   audio/                          # bundled tracks (placeholders, not committed)
@@ -95,7 +101,26 @@ The separation of concerns:
   `StreamBuilder`. Widgets are split into small classes rather than
   build-helper methods. The layout switches to artwork beside the controls at widths of 720 px and up.
 
-Device file picking is planned and will be added under `lib/features/`.
+**Device file picking.** The "+" button opens Android's system picker
+(Storage Access Framework) filtered to audio, with multi-select. The picker
+copies each chosen file into the app's cache and hands back that copy's path,
+so the app needs no storage permission. Picked tracks are appended to the list
+and the first one starts playing; they are labelled "From device". They are
+not remembered after the app is closed.
+
+**Audio focus and headphones.** At startup the app declares itself a music
+player to Android (`AudioSessionConfiguration.music()`), and playback requests
+audio focus. `AudioFocusHandler` applies these rules:
+
+| Event | What happens |
+|---|---|
+| Headphones unplugged or Bluetooth disconnected | Pause, with a "headphones disconnected" message. No auto-resume. |
+| Short interruption (e.g. a phone call) | Pause, then resume when it ends, unless the user pressed play/pause meanwhile |
+| Another app starts playing music | Pause for good, with a message |
+| Short "duck" request (e.g. a navigation prompt) | Left to Android, which lowers media volume itself on Android 8+ |
+
+just_audio's built-in interruption handling is turned off so these rules live
+in one place and are unit-tested (`test/audio_focus_test.dart`).
 
 ## Using the app
 
@@ -105,6 +130,7 @@ Device file picking is planned and will be added under `lib/features/`.
 | Tap | Artwork | Play / pause |
 | Tap a dot | Under the artwork | Jump to that track |
 | Tap | "Up next" card | Skip to the next track |
+| Tap "+" | Top bar | Add audio files from the device |
 | Tap the EQ pill, or swipe up on "Swipe up for EQ" | Top bar / bottom of the screen | Open the equalizer |
 | Tap a preset | EQ sheet | Flat, Bass, Vocal, Treble or Warm |
 | Double-tap a dB value | EQ sheet | Reset that band to 0 dB |

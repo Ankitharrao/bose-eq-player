@@ -48,4 +48,4 @@ The layers are strict:
 
 ## Status / next steps (from docs/NOTES.md)
 
-The playback engine, player screen and EQ panel (bottom sheet in `lib/features/equalizer/`) are built. Still to do: device file picking (`file_picker`), `audio_session` wiring (audio focus, headphone unplug), and licensed tracks with credits in the README.
+The playback engine, player screen, EQ panel (bottom sheet in `lib/features/equalizer/`) are built. Device file picking (`lib/data/device_tracks.dart`, `lib/features/library/`) is built; picked files are cache copies, so play them with `setFilePath`. Audio focus and unplugging are handled by `AudioFocusHandler` (`lib/audio/audio_focus.dart`), wired to `audio_session` in `AudioEngine._initSession`; just_audio's own `handleInterruptions` is off, so don't re-enable it. Internal pauses/plays must bypass the public `play()`/`pause()`, which cancel a pending auto-resume. Still to do: licensed tracks with credits in the README.
