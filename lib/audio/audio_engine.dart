@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../data/track.dart';
+import 'audio_focus.dart';
 
 /// Owns the player, the track list and the equalizer effect.
 /// Commands are fire-and-forget; state comes back through streams.
@@ -17,13 +19,29 @@ class AudioEngine extends ChangeNotifier {
 
   late final AudioPlayer _player = AudioPlayer(
     audioPipeline: AudioPipeline(androidAudioEffects: [equalizer]),
+    // Focus changes and unplugging are handled by [_focus] below, so the
+    // rules live in this app and the UI can be told why playback stopped.
+    // just_audio still requests audio focus whenever playback starts.
+    handleInterruptions: false,
   );
+
+  late final AudioFocusHandler _focus = AudioFocusHandler(
+    isPlaying: () => _player.playing,
+    pause: () => _fire(_player.pause()),
+    play: () => _fire(_player.play()),
+    onNotice: _notices.add,
+  );
+  final _notices = StreamController<String>.broadcast();
+  final List<StreamSubscription<void>> _sessionSubs = [];
 
   final List<Track> _tracks;
   int _index = 0;
   int _loadToken = 0; // lets a newer load cancel an older one
   int _lastStep = 1; // +1 after next, -1 after previous; drives UI motion
   StreamSubscription<PlayerState>? _stateSub;
+
+  /// One-off messages for the UI, e.g. "Paused: headphones disconnected".
+  Stream<String> get notices => _notices.stream;
 
   /// Latest playback problem for the UI to show; null when all is well.
   final ValueNotifier<String?> error = ValueNotifier(null);
@@ -41,25 +59,66 @@ class AudioEngine extends ChangeNotifier {
 
   /// True if [previous] would restart the current track instead of
   /// changing track.
-  bool get previousRestarts =>
-      _player.position > const Duration(seconds: 3);
+  bool get previousRestarts => _player.position > const Duration(seconds: 3);
 
   Stream<Duration> get positionStream => _player.positionStream;
   Stream<Duration?> get durationStream => _player.durationStream;
   Stream<bool> get playingStream => _player.playingStream;
   Stream<bool> get loadingStream => _player.processingStateStream.map(
-        (s) => s == ProcessingState.loading || s == ProcessingState.buffering,
+    (s) => s == ProcessingState.loading || s == ProcessingState.buffering,
   );
 
-  /// Loads the first track, paused. Call once, then init the equalizer.
-  Future<void> init() => _load(0);
+  /// Sets up the audio session and loads the first track, paused.
+  /// Call once, then init the equalizer.
+  Future<void> init() async {
+    await _initSession();
+    await _load(0);
+  }
 
-  void play() => _fire(_player.play());
-  void pause() => _fire(_player.pause());
+  /// Declares this app as a music player (media usage, full focus), then
+  /// listens for focus changes and for headphones being unplugged.
+  Future<void> _initSession() async {
+    try {
+      final session = await AudioSession.instance;
+      await session.configure(const AudioSessionConfiguration.music());
+      _sessionSubs
+        ..add(
+          session.becomingNoisyEventStream.listen(
+            (_) => _focus.onBecomingNoisy(),
+          ),
+        )
+        ..add(session.interruptionEventStream.listen(_focus.onInterruption));
+    } catch (e) {
+      // Playback still works; it just won't react to focus changes.
+      debugPrint('Audio session unavailable: $e');
+    }
+  }
+
+  // play/pause are user commands: they cancel any pending auto-resume.
+  void play() {
+    _focus.onUserAction();
+    _fire(_player.play());
+  }
+
+  void pause() {
+    _focus.onUserAction();
+    _fire(_player.pause());
+  }
+
   void togglePlayPause() => _player.playing ? pause() : play();
   void seek(Duration position) => _fire(_player.seek(position));
   void next() => _fire(_next());
   void previous() => _fire(_previous());
+
+  /// Appends [tracks] to the list and starts playing the first of them.
+  Future<void> addTracks(List<Track> tracks) async {
+    if (tracks.isEmpty) return;
+    final first = _tracks.length;
+    _tracks.addAll(tracks);
+    _lastStep = 1;
+    await _load(first);
+    if (error.value == null) play();
+  }
 
   /// Jumps straight to the track at [index].
   void skipTo(int index) {
@@ -119,14 +178,20 @@ class AudioEngine extends ChangeNotifier {
 
   /// Starts a command and logs any failure instead of letting it escape.
   void _fire(Future<void> work) {
-    unawaited(work.catchError((Object e) {
-      debugPrint('Audio command failed: $e');
-    }));
+    unawaited(
+      work.catchError((Object e) {
+        debugPrint('Audio command failed: $e');
+      }),
+    );
   }
 
   @override
   void dispose() {
     _stateSub?.cancel();
+    for (final sub in _sessionSubs) {
+      sub.cancel();
+    }
+    _notices.close();
     _player.dispose();
     error.dispose();
     super.dispose();

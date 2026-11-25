@@ -104,8 +104,9 @@ class EqualizerController extends ChangeNotifier {
     final params = _params;
     if (params == null) return;
     for (final MapEntry(key: band, value: db) in gains.entries) {
-      _target[band] =
-          db.clamp(params.minDecibels, params.maxDecibels).toDouble();
+      _target[band] = db
+          .clamp(params.minDecibels, params.maxDecibels)
+          .toDouble();
     }
     notifyListeners();
     commit();

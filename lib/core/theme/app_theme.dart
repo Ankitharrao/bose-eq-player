@@ -43,6 +43,12 @@ abstract final class AppTheme {
         ),
       ),
       iconTheme: const IconThemeData(color: AppColors.paper),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: AppColors.paper,
+        contentTextStyle: AppTextStyles.body.copyWith(color: AppColors.ink),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: AppColors.inkRaised,
         surfaceTintColor: Colors.transparent,

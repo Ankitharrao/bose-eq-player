@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../equalizer/eq_panel.dart';
 import '../equalizer/widgets/eq_chip.dart';
+import '../library/add_music_button.dart';
 import 'widgets/seek_bar.dart';
 import 'widgets/swipeable_artwork.dart';
 import 'widgets/track_dots.dart';
@@ -25,32 +27,38 @@ class PlayerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 960),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: Column(
-                children: [
-                  _TopBar(eq),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListenableBuilder(
-                      listenable: engine,
-                      builder: (context, _) {
-                        if (engine.currentTrack == null) {
-                          return const _EmptyState();
-                        }
-                        return LayoutBuilder(
-                          builder: (context, box) => box.maxWidth >= 720
-                              ? _WideLayout(engine)
-                              : _NarrowLayout(engine, eq),
-                        );
-                      },
+      body: _NoticeListener(
+        engine: engine,
+        child: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 960),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                child: Column(
+                  children: [
+                    _TopBar(engine, eq),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: ListenableBuilder(
+                        listenable: engine,
+                        builder: (context, _) {
+                          if (engine.currentTrack == null) {
+                            return _EmptyState(engine);
+                          }
+                          return LayoutBuilder(
+                            builder: (context, box) => box.maxWidth >= 720
+                                ? _WideLayout(engine)
+                                : _NarrowLayout(engine, eq),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -60,9 +68,46 @@ class PlayerScreen extends StatelessWidget {
   }
 }
 
-class _TopBar extends StatelessWidget {
-  const _TopBar(this.eq);
+/// Shows the engine's one-off notices (e.g. "Paused: headphones
+/// disconnected") as snack bars.
+class _NoticeListener extends StatefulWidget {
+  const _NoticeListener({required this.engine, required this.child});
 
+  final AudioEngine engine;
+  final Widget child;
+
+  @override
+  State<_NoticeListener> createState() => _NoticeListenerState();
+}
+
+class _NoticeListenerState extends State<_NoticeListener> {
+  StreamSubscription<String>? _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    _sub = widget.engine.notices.listen((message) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+class _TopBar extends StatelessWidget {
+  const _TopBar(this.engine, this.eq);
+
+  final AudioEngine engine;
   final EqualizerController eq;
 
   @override
@@ -72,6 +117,8 @@ class _TopBar extends StatelessWidget {
         const _LiveDot(),
         const SizedBox(width: 8),
         const Expanded(child: Text('NOW PLAYING', style: AppTextStyles.label)),
+        AddMusicButton(engine: engine),
+        const SizedBox(width: 8),
         EqChip(eq: eq, onPressed: () => showEqSheet(context, eq)),
       ],
     );
@@ -257,7 +304,8 @@ class _TrackInfo extends StatelessWidget {
         Align(
           alignment: Alignment.centerLeft,
           child: Text(
-            'TRACK ${engine.currentIndex + 1} OF ${engine.tracks.length}',
+            'TRACK ${engine.currentIndex + 1} OF ${engine.tracks.length}'
+            '${track.isAsset ? '' : '  ·  FROM DEVICE'}',
             style: AppTextStyles.label,
           ),
         ),
@@ -319,27 +367,31 @@ class _ErrorBanner extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState(this.engine);
+
+  final AudioEngine engine;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
+          const Icon(
             Icons.library_music_outlined,
             size: 56,
             color: AppColors.paperMuted,
           ),
-          SizedBox(height: 16),
-          Text('No tracks yet', style: AppTextStyles.display),
-          SizedBox(height: 8),
-          Text(
+          const SizedBox(height: 16),
+          const Text('No tracks yet', style: AppTextStyles.display),
+          const SizedBox(height: 8),
+          const Text(
             'Add a track from your device to start listening.',
             textAlign: TextAlign.center,
             style: AppTextStyles.body,
           ),
+          const SizedBox(height: 24),
+          AddMusicButton(engine: engine, compact: false),
         ],
       ),
     );
