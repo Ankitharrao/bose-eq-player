@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'audio/audio_engine.dart';
 import 'audio/equalizer_controller.dart';
 import 'data/track.dart';
+import 'core/theme/app_theme.dart';
 
 final engine = AudioEngine(bundledTracks);
 final eq = EqualizerController(engine.equalizer);
@@ -11,7 +12,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await engine.init();
   await eq.init(); // after the first track loads, as in the spike
-  runApp(const MaterialApp(home: TestScreen()));
+  runApp(MaterialApp(theme: AppTheme.dark, home: const TestScreen()));
 }
 
 String fmt(Duration d) {
