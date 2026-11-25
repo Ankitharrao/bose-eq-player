@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../data/track.dart';
 import 'audio_focus.dart';
@@ -120,6 +122,55 @@ class AudioEngine extends ChangeNotifier {
     if (error.value == null) play();
   }
 
+  /// Removes a track picked from the device and deletes its cached copy.
+  /// Bundled tracks are part of the app and cannot be removed.
+  void removeTrack(int index) => _fire(_removeTrack(index));
+
+  Future<void> _removeTrack(int index) async {
+    if (index < 0 || index >= _tracks.length) return;
+    final removed = _tracks[index];
+    if (removed.isAsset) return;
+
+    final wasCurrent = index == _index;
+    _tracks.removeAt(index);
+    _index = indexAfterRemoval(
+      current: _index,
+      removed: index,
+      newLength: _tracks.length,
+    );
+
+    if (_tracks.isEmpty) {
+      // Pause rather than stop: stop() would tear down the platform player
+      // and, with it, the equalizer effect in its pipeline.
+      ++_loadToken;
+      error.value = null;
+      notifyListeners(); // before awaiting, so the UI drops the row at once
+      await _player.pause();
+      await _player.seek(Duration.zero);
+    } else if (wasCurrent) {
+      // The following track moves into this slot; keep the play state.
+      _lastStep = 1;
+      await _load(_index);
+    } else {
+      notifyListeners();
+    }
+
+    await _deletePickedCopy(removed);
+  }
+
+  /// Deletes the file picker's cache copy of [track]. Never touches files
+  /// outside the app's cache, so the user's original file is left alone.
+  Future<void> _deletePickedCopy(Track track) async {
+    try {
+      final cache = (await getTemporaryDirectory()).path;
+      final file = File(track.path);
+      if (!file.path.startsWith(cache)) return;
+      if (await file.exists()) await file.delete();
+    } catch (e) {
+      debugPrint('Could not delete cached copy of "${track.title}": $e');
+    }
+  }
+
   /// Jumps straight to the track at [index].
   void skipTo(int index) {
     if (index < 0 || index >= _tracks.length || index == _index) return;
@@ -196,4 +247,22 @@ class AudioEngine extends ChangeNotifier {
     error.dispose();
     super.dispose();
   }
+}
+
+/// Where the current index lands after removing the track at [removed]
+/// from a list that now has [newLength] tracks.
+/// - Before the current track: everything shifts down by one.
+/// - The current track itself: the following track takes its slot
+///   (wrapping to the start if it was the last one).
+/// - After it: unchanged.
+@visibleForTesting
+int indexAfterRemoval({
+  required int current,
+  required int removed,
+  required int newLength,
+}) {
+  if (newLength <= 0) return 0;
+  if (removed < current) return current - 1;
+  if (removed == current) return current % newLength;
+  return current;
 }

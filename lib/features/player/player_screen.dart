@@ -8,9 +8,11 @@ import '../../audio/audio_engine.dart';
 import '../../audio/equalizer_controller.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/widgets/press_scale.dart';
 import '../equalizer/eq_panel.dart';
 import '../equalizer/widgets/eq_chip.dart';
 import '../library/add_music_button.dart';
+import '../library/queue_sheet.dart';
 import 'widgets/seek_bar.dart';
 import 'widgets/swipeable_artwork.dart';
 import 'widgets/track_dots.dart';
@@ -117,10 +119,44 @@ class _TopBar extends StatelessWidget {
         const _LiveDot(),
         const SizedBox(width: 8),
         const Expanded(child: Text('NOW PLAYING', style: AppTextStyles.label)),
+        _QueueButton(engine),
+        const SizedBox(width: 8),
         AddMusicButton(engine: engine),
         const SizedBox(width: 8),
         EqChip(eq: eq, onPressed: () => showEqSheet(context, eq)),
       ],
+    );
+  }
+}
+
+/// Opens the track list, where device tracks can be removed.
+class _QueueButton extends StatelessWidget {
+  const _QueueButton(this.engine);
+
+  final AudioEngine engine;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      scale: 0.9,
+      child: Tooltip(
+        message: 'Queue',
+        child: Material(
+          color: AppColors.inkRaised,
+          shape: const CircleBorder(side: BorderSide(color: AppColors.inkLine)),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              showQueueSheet(context, engine);
+            },
+            child: const SizedBox.square(
+              dimension: 38,
+              child: Icon(Icons.queue_music_rounded, size: 20),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
