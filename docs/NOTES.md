@@ -40,7 +40,13 @@ A running log of decisions and experiments. Feeds the README's "Challenges" sect
 - Ducking is left to Android (automatic for media on 8+), as just_audio also does for media usage.
 - Result on device: pending (unplug wired headphones, disconnect Bluetooth, receive a call, start another music app).
 
+### Removing device tracks, and the seek bar
+- Queue sheet lists all tracks; device tracks can be removed (trash or swipe). Bundled assets cannot. Removal deletes only the picker's cache copy.
+- When the last track is removed the player pauses rather than stops, so the equalizer effect in the pipeline survives.
+- Tried a waveform seek bar with `just_waveform`, then reverted it in favour of a simpler Material slider whose played part is an animated wave while playing (custom `WavyTrackShape`). The hand-built waveform control also needed its own screen-reader semantics, which had caused an assertion; a real `Slider` gets them from Flutter.
+- Result on device: pending (extraction speed on a long track, look of the bars).
+
 ## To do next
-- Check on device: new UI, crackle write modes, device file picking, audio focus.
+- Check on device: new UI, crackle write modes, device file picking, audio focus, wavy seek bar, removing tracks.
 - Verify Reset EQ by ear and update the README checklist.
 - Add licensed bundled tracks and credits.

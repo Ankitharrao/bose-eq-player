@@ -4,12 +4,13 @@ A Flutter music player with a real-time 3-band equalizer, built for the
 Bose Professional *Software Development Intern – Frontend Applications* challenge.
 
 > **Status: work in progress.** Implemented: playback of bundled tracks and
-> tracks picked from the device, the player screen (with swipe gestures), the
-> EQ sheet (three sliders, presets and a response curve), and audio focus
-> handling (phone calls, other apps, headphone unplugging). The equalizer engine
-> is verified on a physical device; the latest UI, the crackle fix, file picking
-> and audio focus still need checking on the device. See the checklist below for
-> exactly what works today.
+> tracks picked from the device, a queue where device tracks can be removed,
+> the player screen (swipe gestures, animated wavy seek bar), the EQ sheet
+> (three sliders, presets and a response curve), and audio focus handling
+> (phone calls, other apps, headphone unplugging). The equalizer engine is
+> verified on a physical device; the latest UI, the crackle fix, file picking,
+> track removal and audio focus still need checking on the device. See the
+> checklist below for exactly what works today.
 
 ## Target platform
 
@@ -43,6 +44,7 @@ Tested by ear on one device: **Samsung SM-S911B, Android 14**.
 | `just_audio` | Playback and the Android equalizer effect | Yes |
 | `audio_session` | Audio focus: phone calls, headphone unplug | Yes |
 | `file_picker` | Choose tracks from device storage via the system picker | Yes |
+| `path_provider` | Locate the app cache, so removing a track deletes only its cached copy | Yes |
 
 Fonts (Space Grotesk and Inter, from Google Fonts) are bundled as assets rather
 than fetched at runtime, so the app renders identically offline. See each
@@ -78,6 +80,7 @@ lib/
     widgets/                      # band slider, response curve, top-bar EQ pill
   features/library/
     add_music_button.dart         # "+" button / empty-state button for picking
+    queue_sheet.dart              # track list; remove device tracks
 test/                             # widget tests
 assets/
   audio/                          # bundled tracks (placeholders, not committed)
@@ -104,7 +107,9 @@ The separation of concerns:
 **Device file picking.** The "+" button opens Android's system picker
 (Storage Access Framework) filtered to audio, with multi-select. The picker
 copies each chosen file into the app's cache and hands back that copy's path,
-so the app needs no storage permission. Picked tracks are appended to the list
+so the app needs no storage permission. Removing a device track from the
+queue deletes only that cache copy; the original file on the phone is never
+touched. Bundled tracks cannot be removed. Picked tracks are appended to the list
 and the first one starts playing; they are labelled "From device". They are
 not remembered after the app is closed.
 
@@ -122,6 +127,11 @@ audio focus. `AudioFocusHandler` applies these rules:
 just_audio's built-in interruption handling is turned off so these rules live
 in one place and are unit-tested (`test/audio_focus_test.dart`).
 
+**Seek bar.** A standard Material slider with a custom track shape
+(`wavy_track_shape.dart`): the played part is a small sine wave that flows
+while audio plays and eases flat when paused, while dragging, or when the
+system "remove animations" setting is on.
+
 ## Using the app
 
 | Gesture | Where | Does |
@@ -131,6 +141,9 @@ in one place and are unit-tested (`test/audio_focus_test.dart`).
 | Tap a dot | Under the artwork | Jump to that track |
 | Tap | "Up next" card | Skip to the next track |
 | Tap "+" | Top bar | Add audio files from the device |
+| Tap the queue button | Top bar | Open the track list; tap a track to play it |
+| Tap the trash icon, or swipe left | Queue | Remove a track added from the device |
+| Drag or tap | Seek bar | Seek |
 | Tap the EQ pill, or swipe up on "Swipe up for EQ" | Top bar / bottom of the screen | Open the equalizer |
 | Tap a preset | EQ sheet | Flat, Bass, Vocal, Treble or Warm |
 | Double-tap a dB value | EQ sheet | Reset that band to 0 dB |
