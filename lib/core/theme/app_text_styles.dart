@@ -11,6 +11,14 @@ abstract final class AppTextStyles {
     color: AppColors.paper,
   );
 
+  static const title = TextStyle(
+    fontFamily: 'SpaceGrotesk',
+    fontSize: 22,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.3,
+    color: AppColors.paper,
+  );
+
   // Tabular figures keep digits from jittering as times change.
   static const number = TextStyle(
     fontFamily: 'SpaceGrotesk',

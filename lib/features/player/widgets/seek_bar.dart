@@ -44,20 +44,22 @@ class _SeekBarState extends State<SeekBar> {
                 // A smaller overlay keeps the track ends aligned with the times.
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
-                    overlayShape:
-                    const RoundSliderOverlayShape(overlayRadius: 14),
+                    overlayShape: const RoundSliderOverlayShape(
+                      overlayRadius: 14,
+                    ),
                   ),
                   child: Slider(
                     min: 0,
                     max: maxMs,
                     value: valueMs,
-                    onChanged:
-                    hasDuration ? (v) => setState(() => _dragMs = v) : null,
+                    onChanged: hasDuration
+                        ? (v) => setState(() => _dragMs = v)
+                        : null,
                     onChangeEnd: hasDuration
                         ? (v) {
-                      engine.seek(Duration(milliseconds: v.round()));
-                      setState(() => _dragMs = null);
-                    }
+                            engine.seek(Duration(milliseconds: v.round()));
+                            setState(() => _dragMs = null);
+                          }
                         : null,
                   ),
                 ),
@@ -69,8 +71,9 @@ class _SeekBarState extends State<SeekBar> {
                       Text(formatDuration(shown), style: AppTextStyles.number),
                       Text(
                         hasDuration ? formatDuration(total) : '--:--',
-                        style: AppTextStyles.number
-                            .copyWith(color: AppColors.paperMuted),
+                        style: AppTextStyles.number.copyWith(
+                          color: AppColors.paperMuted,
+                        ),
                       ),
                     ],
                   ),

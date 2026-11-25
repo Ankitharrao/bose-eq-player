@@ -43,6 +43,23 @@ abstract final class AppTheme {
         ),
       ),
       iconTheme: const IconThemeData(color: AppColors.paper),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.inkRaised,
+        surfaceTintColor: Colors.transparent,
+        dragHandleColor: AppColors.inkLine,
+        showDragHandle: true,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: SegmentedButton.styleFrom(
+          selectedBackgroundColor: AppColors.lime,
+          selectedForegroundColor: AppColors.ink,
+          foregroundColor: AppColors.paper,
+          side: const BorderSide(color: AppColors.inkLine),
+        ),
+      ),
     );
   }
 }

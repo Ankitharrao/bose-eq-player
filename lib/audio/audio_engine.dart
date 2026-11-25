@@ -22,6 +22,7 @@ class AudioEngine extends ChangeNotifier {
   final List<Track> _tracks;
   int _index = 0;
   int _loadToken = 0; // lets a newer load cancel an older one
+  int _lastStep = 1; // +1 after next, -1 after previous; drives UI motion
   StreamSubscription<PlayerState>? _stateSub;
 
   /// Latest playback problem for the UI to show; null when all is well.
@@ -30,6 +31,18 @@ class AudioEngine extends ChangeNotifier {
   List<Track> get tracks => List.unmodifiable(_tracks);
   int get currentIndex => _index;
   Track? get currentTrack => _tracks.isEmpty ? null : _tracks[_index];
+
+  /// The track [next] would play, or null with fewer than two tracks.
+  Track? get nextTrack =>
+      _tracks.length < 2 ? null : _tracks[(_index + 1) % _tracks.length];
+
+  /// +1 if the last track change moved forward, -1 if backward.
+  int get lastStep => _lastStep;
+
+  /// True if [previous] would restart the current track instead of
+  /// changing track.
+  bool get previousRestarts =>
+      _player.position > const Duration(seconds: 3);
 
   Stream<Duration> get positionStream => _player.positionStream;
   Stream<Duration?> get durationStream => _player.durationStream;
@@ -48,18 +61,27 @@ class AudioEngine extends ChangeNotifier {
   void next() => _fire(_next());
   void previous() => _fire(_previous());
 
+  /// Jumps straight to the track at [index].
+  void skipTo(int index) {
+    if (index < 0 || index >= _tracks.length || index == _index) return;
+    _lastStep = index > _index ? 1 : -1;
+    _fire(_load(index));
+  }
+
   Future<void> _next() async {
     if (_tracks.isEmpty) return;
+    _lastStep = 1;
     await _load((_index + 1) % _tracks.length);
   }
 
   Future<void> _previous() async {
     if (_tracks.isEmpty) return;
     // Past 3 seconds, "previous" restarts the current track instead.
-    if (_player.position > const Duration(seconds: 3)) {
+    if (previousRestarts) {
       await _player.seek(Duration.zero);
       return;
     }
+    _lastStep = -1;
     await _load((_index - 1 + _tracks.length) % _tracks.length);
   }
 

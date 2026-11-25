@@ -8,13 +8,17 @@ enum EqBand { low, mid, high }
 
 /// Owns the 3-band EQ state and applies it to the Android equalizer.
 /// The UI listens to this object; it never touches just_audio directly.
+///
+/// Writing to the Android equalizer while a slider is being dragged causes
+/// an audible crackle on the test device: every gain change is a step the
+/// effect does not smooth out, and a drag produces dozens of them per second.
+/// So by default slider movement only updates what the UI shows ([setGain]),
+/// and the hardware is written once when the drag ends ([commit]).
+///
+/// [liveInterval] trades that off for comparison on a device: when set, the
+/// hardware is also written during a drag, at most once per interval.
 class EqualizerController extends ChangeNotifier {
   EqualizerController(this._equalizer);
-
-  // Smoothing: how often we nudge the hardware, and the largest change
-  // (in dB) allowed per nudge. Smaller step = smoother but slower to follow.
-  static const _tick = Duration(milliseconds: 20);
-  static const _maxStepDb = 0.75;
 
   final AndroidEqualizer _equalizer;
   AndroidEqualizerParameters? _params;
@@ -24,14 +28,26 @@ class EqualizerController extends ChangeNotifier {
     for (final band in EqBand.values) band: 0.0,
   };
 
-  // What the hardware currently has; it ramps toward _target.
+  // What the hardware currently has.
   final Map<EqBand, double> _applied = {
     for (final band in EqBand.values) band: 0.0,
   };
 
-  Timer? _timer;
-  bool _ticking = false; // stops overlapping ticks if the phone is slow
-  int _epoch = 0; // bumped by reset() so an in-flight tick stops writing
+  Timer? _liveTimer;
+  Duration? _liveInterval;
+
+  /// How often to write during a drag. Null: only on release (default).
+  /// [Duration.zero]: on every slider movement.
+  Duration? get liveInterval => _liveInterval;
+  set liveInterval(Duration? value) {
+    _liveInterval = value;
+    _liveTimer?.cancel();
+    _liveTimer = null;
+    notifyListeners();
+  }
+
+  bool _writing = false; // one write loop at a time
+  int _epoch = 0; // bumped by reset() so an in-flight write stops
 
   /// False if the device has no usable equalizer (or init failed).
   bool get isAvailable => _params != null;
@@ -43,6 +59,9 @@ class EqualizerController extends ChangeNotifier {
 
   /// The slider position, which the UI displays immediately.
   double gainOf(EqBand band) => _target[band] ?? 0;
+
+  /// True when every slider is at 0 dB.
+  bool get isFlat => _target.values.every((db) => db == 0);
 
   /// Call once after the player is created.
   Future<void> init() async {
@@ -57,55 +76,76 @@ class EqualizerController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Moves a slider. The UI updates now; the hardware follows in small steps.
+  /// Moves a slider. The UI updates now; the hardware only follows during
+  /// the drag if [liveInterval] is set. Call [commit] when the drag ends.
   void setGain(EqBand band, double db) {
     final params = _params;
     if (params == null) return;
-
     _target[band] = db.clamp(params.minDecibels, params.maxDecibels).toDouble();
     notifyListeners();
 
-    _timer ??= Timer.periodic(_tick, (_) => _onTick());
+    final interval = _liveInterval;
+    if (interval == null) return;
+    if (interval == Duration.zero) {
+      commit();
+    } else if (_liveTimer == null) {
+      // Throttle: write now, then once more at the end of the interval
+      // so the latest position is not lost.
+      commit();
+      _liveTimer = Timer(interval, () {
+        _liveTimer = null;
+        commit();
+      });
+    }
   }
 
-  /// One smoothing step: nudge each band's real gain toward its target.
-  Future<void> _onTick() async {
+  /// Sets all three sliders at once (a preset) and applies them.
+  void applyGains(Map<EqBand, double> gains) {
     final params = _params;
-    if (params == null || _ticking) return;
-    _ticking = true;
+    if (params == null) return;
+    for (final MapEntry(key: band, value: db) in gains.entries) {
+      _target[band] =
+          db.clamp(params.minDecibels, params.maxDecibels).toDouble();
+    }
+    notifyListeners();
+    commit();
+  }
+
+  /// Puts one slider back to 0 dB and applies it.
+  void resetBand(EqBand band) => applyGains({band: 0});
+
+  /// Applies the current slider positions to the hardware, in one write per
+  /// changed band. Safe to call repeatedly; only the latest values are sent.
+  void commit() {
+    if (_params == null || _writing) return;
+    unawaited(_writeLoop());
+  }
+
+  Future<void> _writeLoop() async {
+    final params = _params;
+    if (params == null) return;
+    _writing = true;
     final epoch = _epoch;
-
     try {
-      var stillMoving = false;
-
-      for (final band in EqBand.values) {
-        final target = _target[band]!;
-        final current = _applied[band]!;
-        if (current == target) continue;
-
-        final diff = target - current;
-        final next = diff.abs() <= _maxStepDb
-            ? target // close enough: land exactly on the target
-            : current + (diff > 0 ? _maxStepDb : -_maxStepDb);
-        _applied[band] = next;
-
-        for (final b in params.bands.where((b) => _bandFor(b) == band)) {
-          if (epoch != _epoch) return; // reset() happened; stop writing
-          await b.setGain(next);
+      // Loop in case a slider was released again while we were writing.
+      var changed = true;
+      while (changed) {
+        changed = false;
+        for (final band in EqBand.values) {
+          final db = _target[band]!;
+          if (_applied[band] == db) continue;
+          for (final b in params.bands.where((b) => _bandFor(b) == band)) {
+            if (epoch != _epoch) return; // reset() happened; stop writing
+            await b.setGain(db);
+          }
+          _applied[band] = db;
+          changed = true;
         }
-        if (next != target) stillMoving = true;
-      }
-
-      if (!stillMoving) {
-        _timer?.cancel();
-        _timer = null;
       }
     } catch (e) {
       debugPrint('Failed to apply gain: $e');
-      _timer?.cancel(); // avoid repeating the same error every 20 ms
-      _timer = null;
     } finally {
-      _ticking = false;
+      _writing = false;
     }
   }
 
@@ -114,9 +154,9 @@ class EqualizerController extends ChangeNotifier {
     final params = _params;
     if (params == null) return;
 
-    _epoch++; // cancel any in-flight smoothing writes
-    _timer?.cancel();
-    _timer = null;
+    _epoch++; // cancel any in-flight writes
+    _liveTimer?.cancel();
+    _liveTimer = null;
     for (final band in EqBand.values) {
       _target[band] = 0;
       _applied[band] = 0;
@@ -142,7 +182,7 @@ class EqualizerController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _liveTimer?.cancel();
     super.dispose();
   }
 }
