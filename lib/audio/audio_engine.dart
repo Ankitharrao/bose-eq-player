@@ -7,6 +7,7 @@ import 'package:just_audio/just_audio.dart';
 import '../data/device_tracks.dart';
 import '../data/track.dart';
 import 'audio_focus.dart';
+import '../core/log.dart';
 
 /// Owns the player, the track list and the equalizer effect.
 /// Commands are fire-and-forget; state comes back through streams.
@@ -94,7 +95,7 @@ class AudioEngine extends ChangeNotifier {
         ..add(session.interruptionEventStream.listen(_focus.onInterruption));
     } catch (e) {
       // Playback still works; it just won't react to focus changes.
-      debugPrint('Audio session unavailable: $e');
+      logDebug('Audio session unavailable: $e');
     }
   }
 
@@ -215,7 +216,7 @@ class AudioEngine extends ChangeNotifier {
       // If the player was already playing it carries on with the new track.
     } catch (e) {
       if (token != _loadToken) return; // a newer request replaced this one
-      debugPrint('Could not load ${track.title}: $e');
+      logDebug('Could not load ${track.title}: $e');
       error.value = 'Could not play "${track.title}".';
     }
   }
@@ -234,7 +235,7 @@ class AudioEngine extends ChangeNotifier {
   void _fire(Future<void> work) {
     unawaited(
       work.catchError((Object e) {
-        debugPrint('Audio command failed: $e');
+        logDebug('Audio command failed: $e');
       }),
     );
   }

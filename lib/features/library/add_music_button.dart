@@ -5,6 +5,7 @@ import '../../audio/audio_engine.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/press_scale.dart';
 import '../../data/device_tracks.dart';
+import '../../core/log.dart';
 
 /// Opens the system picker, adds the chosen audio files to the track list
 /// and plays the first one. Shows a spinner while the picker is open.
@@ -46,7 +47,7 @@ class _AddMusicButtonState extends State<AddMusicButton> {
       };
       messenger.showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
-      debugPrint('File picking failed: $e');
+      logDebug('File picking failed: $e');
       messenger.showSnackBar(
         const SnackBar(content: Text('Could not open your music files.')),
       );

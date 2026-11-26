@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -31,8 +32,10 @@ class EqPanel extends StatelessWidget {
 
   final EqualizerController eq;
 
-  /// Build with --dart-define=EQ_COMPARE=true to show the write-mode picker.
-  static const _showCompare = bool.fromEnvironment('EQ_COMPARE');
+  /// Testing aid: build with --dart-define=EQ_COMPARE=true (debug or
+  /// profile) to show the write-mode picker. Never shown in release builds.
+  static const _showCompare =
+      !kReleaseMode && bool.fromEnvironment('EQ_COMPARE');
 
   static const _bands = [
     (EqBand.low, 'LOW', 'Below 500 Hz'),

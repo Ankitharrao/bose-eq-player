@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'track.dart';
+import '../core/log.dart';
 
 /// Tracks picked from the phone's storage, remembered across restarts.
 ///
@@ -50,7 +51,7 @@ class DeviceLibrary {
       }
       return kept;
     } catch (e) {
-      debugPrint('Could not load saved tracks: $e');
+      logDebug('Could not load saved tracks: $e');
       return [];
     }
   }
@@ -63,7 +64,7 @@ class DeviceLibrary {
     ]);
     _writes = _writes
         .then((_) => _prefs.setString(_key, json))
-        .catchError((Object e) => debugPrint('Could not save tracks: $e'));
+        .catchError((Object e) => logDebug('Could not save tracks: $e'));
   }
 
   /// Gives back read access to a removed track. The file itself is the
@@ -79,7 +80,7 @@ class DeviceLibrary {
     try {
       await _channel.invokeMethod<void>('release', {'uri': uri});
     } catch (e) {
-      debugPrint('Could not release $uri: $e');
+      logDebug('Could not release $uri: $e');
     }
   }
 }

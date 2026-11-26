@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import '../core/log.dart';
 
 /// The three user-facing controls.
 enum EqBand { low, mid, high }
@@ -70,7 +71,7 @@ class EqualizerController extends ChangeNotifier {
       _params = await _equalizer.parameters;
       await reset(); // the device may not start flat
     } catch (e) {
-      debugPrint('Equalizer unavailable: $e');
+      logDebug('Equalizer unavailable: $e');
       _params = null;
     }
     notifyListeners();
@@ -144,7 +145,7 @@ class EqualizerController extends ChangeNotifier {
         }
       }
     } catch (e) {
-      debugPrint('Failed to apply gain: $e');
+      logDebug('Failed to apply gain: $e');
     } finally {
       _writing = false;
     }
@@ -169,7 +170,7 @@ class EqualizerController extends ChangeNotifier {
         await b.setGain(0);
       }
     } catch (e) {
-      debugPrint('Failed to reset equalizer: $e');
+      logDebug('Failed to reset equalizer: $e');
     }
   }
 
