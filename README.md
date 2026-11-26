@@ -44,6 +44,7 @@ Tested by ear on one device: **Samsung SM-S911B, Android 14**.
 | `just_audio` | Playback and the Android equalizer effect | Yes |
 | `audio_session` | Audio focus: phone calls, headphone unplug | Yes |
 | `shared_preferences` | Remember the list of tracks picked from the device | Yes |
+| `flutter_launcher_icons` (dev) | Generate the Android launcher icons (adaptive and themed) | Yes |
 
 Picking itself uses Android's document picker through a small platform
 channel in `MainActivity.kt` rather than a package (see "Device file picking").

@@ -52,6 +52,9 @@ A running log of decisions and experiments. Feeds the README's "Challenges" sect
 ### Bundled track
 - 2026-11-26: the two bundled test tracks were local files of unknown licence, not committed, so a fresh clone had no audio. Replaced them with "Three Bands", an original 61 s track synthesized by `tool/make_demo_track.py` (standard-library Python, fixed seed) and encoded to AAC with macOS `afconvert` (1.1 MB). Released as CC0. Kick and bass sit in the Low band, the chord pad in Mid, and hats and bells in High, so each slider is audible. `pubspec.yaml` lists the file rather than the folder, so untracked local audio is never bundled.
 
+### Launcher icon
+- 2026-11-26: replaced the Flutter icon with original artwork: three EQ sliders with lime knobs on ink (no Bose marks). Rendered by `tool/icon/render_icon_test.dart` into `assets/icon/` (full icon, adaptive foreground, monochrome for Android 13 themed icons) and generated with `flutter_launcher_icons`. Checked on the device: shows in the launcher (themed when themed icons are on). App label changed from "bose_app" to "EQ Player" (AndroidManifest), matching the MaterialApp title; no Bose name in the label.
+
 ## To do next
 - 2026-11-26: everything above verified on the device in a release build.
 - Record the demo video (5 minutes or less).
