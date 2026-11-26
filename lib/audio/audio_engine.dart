@@ -1,18 +1,19 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:path_provider/path_provider.dart';
 
+import '../data/device_tracks.dart';
 import '../data/track.dart';
 import 'audio_focus.dart';
 
 /// Owns the player, the track list and the equalizer effect.
 /// Commands are fire-and-forget; state comes back through streams.
 class AudioEngine extends ChangeNotifier {
-  AudioEngine(List<Track> tracks) : _tracks = List.of(tracks) {
+  /// [library], when given, remembers device tracks as they are added or
+  /// removed. Tests leave it out.
+  AudioEngine(List<Track> tracks, {this._library}) : _tracks = List.of(tracks) {
     _stateSub = _player.playerStateStream.listen(_onPlayerState);
   }
 
@@ -37,6 +38,7 @@ class AudioEngine extends ChangeNotifier {
   final List<StreamSubscription<void>> _sessionSubs = [];
 
   final List<Track> _tracks;
+  final DeviceLibrary? _library;
   int _index = 0;
   int _loadToken = 0; // lets a newer load cancel an older one
   int _lastStep = 1; // +1 after next, -1 after previous; drives UI motion
@@ -112,18 +114,31 @@ class AudioEngine extends ChangeNotifier {
   void next() => _fire(_next());
   void previous() => _fire(_previous());
 
-  /// Appends [tracks] to the list and starts playing the first of them.
-  Future<void> addTracks(List<Track> tracks) async {
-    if (tracks.isEmpty) return;
-    final first = _tracks.length;
-    _tracks.addAll(tracks);
-    _lastStep = 1;
-    await _load(first);
+  /// Appends the [tracks] not already in the list and plays the first of
+  /// them. If all were already there, plays the first of those instead.
+  /// Returns how many were added.
+  Future<int> addTracks(List<Track> tracks) async {
+    if (tracks.isEmpty) return 0;
+    final known = {for (final t in _tracks) t.path};
+    final fresh = [
+      for (final t in tracks)
+        if (known.add(t.path)) t,
+    ];
+    final target = fresh.isEmpty
+        ? _tracks.indexWhere((t) => t.path == tracks.first.path)
+        : _tracks.length;
+    _tracks.addAll(fresh);
+    if (fresh.isNotEmpty) _library?.save(_tracks);
+    if (target != _index || fresh.isNotEmpty) {
+      _lastStep = target >= _index ? 1 : -1;
+      await _load(target);
+    }
     if (error.value == null) play();
+    return fresh.length;
   }
 
-  /// Removes a track picked from the device and deletes its cached copy.
-  /// Bundled tracks are part of the app and cannot be removed.
+  /// Removes a track picked from the device from the list (the file on the
+  /// phone is left alone). Bundled tracks are part of the app and stay.
   void removeTrack(int index) => _fire(_removeTrack(index));
 
   Future<void> _removeTrack(int index) async {
@@ -133,6 +148,9 @@ class AudioEngine extends ChangeNotifier {
 
     final wasCurrent = index == _index;
     _tracks.removeAt(index);
+    _library
+      ?..save(_tracks)
+      ..forget(removed);
     _index = indexAfterRemoval(
       current: _index,
       removed: index,
@@ -153,21 +171,6 @@ class AudioEngine extends ChangeNotifier {
       await _load(_index);
     } else {
       notifyListeners();
-    }
-
-    await _deletePickedCopy(removed);
-  }
-
-  /// Deletes the file picker's cache copy of [track]. Never touches files
-  /// outside the app's cache, so the user's original file is left alone.
-  Future<void> _deletePickedCopy(Track track) async {
-    try {
-      final cache = (await getTemporaryDirectory()).path;
-      final file = File(track.path);
-      if (!file.path.startsWith(cache)) return;
-      if (await file.exists()) await file.delete();
-    } catch (e) {
-      debugPrint('Could not delete cached copy of "${track.title}": $e');
     }
   }
 
@@ -207,7 +210,7 @@ class AudioEngine extends ChangeNotifier {
       if (track.isAsset) {
         await _player.setAsset(track.path);
       } else {
-        await _player.setFilePath(track.path);
+        await _player.setAudioSource(AudioSource.uri(Uri.parse(track.path)));
       }
       // If the player was already playing it carries on with the new track.
     } catch (e) {

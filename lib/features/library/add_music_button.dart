@@ -7,13 +7,19 @@ import '../../core/widgets/press_scale.dart';
 import '../../data/device_tracks.dart';
 
 /// Opens the system picker, adds the chosen audio files to the track list
-/// and plays the first one. Shows a spinner while the files are copied.
+/// and plays the first one. Shows a spinner while the picker is open.
 ///
 /// [compact] is the round top-bar version; otherwise a full lime button.
 class AddMusicButton extends StatefulWidget {
-  const AddMusicButton({super.key, required this.engine, this.compact = true});
+  const AddMusicButton({
+    super.key,
+    required this.engine,
+    required this.library,
+    this.compact = true,
+  });
 
   final AudioEngine engine;
+  final DeviceLibrary library;
   final bool compact;
 
   @override
@@ -29,18 +35,16 @@ class _AddMusicButtonState extends State<AddMusicButton> {
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final tracks = await pickDeviceTracks();
+      final tracks = await widget.library.pick();
       if (tracks.isEmpty) return; // cancelled
-      await widget.engine.addTracks(tracks);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            tracks.length == 1
-                ? 'Added "${tracks.first.title}"'
-                : 'Added ${tracks.length} tracks',
-          ),
-        ),
-      );
+      final added = await widget.engine.addTracks(tracks);
+      final message = switch (added) {
+        0 => 'Already in your queue',
+        1 when tracks.length == 1 => 'Added "${tracks.first.title}"',
+        1 => 'Added 1 track',
+        _ => 'Added $added tracks',
+      };
+      messenger.showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
       debugPrint('File picking failed: $e');
       messenger.showSnackBar(

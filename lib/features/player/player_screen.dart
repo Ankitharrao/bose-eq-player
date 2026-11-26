@@ -9,6 +9,7 @@ import '../../audio/equalizer_controller.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/press_scale.dart';
+import '../../data/device_tracks.dart';
 import '../equalizer/eq_panel.dart';
 import '../equalizer/widgets/eq_chip.dart';
 import '../library/add_music_button.dart';
@@ -20,11 +21,16 @@ import 'widgets/transport_controls.dart';
 import 'widgets/up_next_card.dart';
 
 class PlayerScreen extends StatelessWidget {
-  const PlayerScreen({super.key, required this.engine, required this.eq});
+  const PlayerScreen({
+    super.key,
+    required this.engine,
+    required this.eq,
+    required this.library,
+  });
 
   final AudioEngine engine;
-
   final EqualizerController eq;
+  final DeviceLibrary library;
 
   @override
   Widget build(BuildContext context) {
@@ -42,14 +48,14 @@ class PlayerScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    _TopBar(engine, eq),
+                    _TopBar(engine, eq, library),
                     const SizedBox(height: 16),
                     Expanded(
                       child: ListenableBuilder(
                         listenable: engine,
                         builder: (context, _) {
                           if (engine.currentTrack == null) {
-                            return _EmptyState(engine);
+                            return _EmptyState(engine, library);
                           }
                           return LayoutBuilder(
                             builder: (context, box) => box.maxWidth >= 720
@@ -107,10 +113,11 @@ class _NoticeListenerState extends State<_NoticeListener> {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar(this.engine, this.eq);
+  const _TopBar(this.engine, this.eq, this.library);
 
   final AudioEngine engine;
   final EqualizerController eq;
+  final DeviceLibrary library;
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +128,7 @@ class _TopBar extends StatelessWidget {
         const Expanded(child: Text('NOW PLAYING', style: AppTextStyles.label)),
         _QueueButton(engine),
         const SizedBox(width: 8),
-        AddMusicButton(engine: engine),
+        AddMusicButton(engine: engine, library: library),
         const SizedBox(width: 8),
         EqChip(eq: eq, onPressed: () => showEqSheet(context, eq)),
       ],
@@ -403,9 +410,10 @@ class _ErrorBanner extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState(this.engine);
+  const _EmptyState(this.engine, this.library);
 
   final AudioEngine engine;
+  final DeviceLibrary library;
 
   @override
   Widget build(BuildContext context) {
@@ -427,7 +435,7 @@ class _EmptyState extends StatelessWidget {
             style: AppTextStyles.body,
           ),
           const SizedBox(height: 24),
-          AddMusicButton(engine: engine, compact: false),
+          AddMusicButton(engine: engine, library: library, compact: false),
         ],
       ),
     );

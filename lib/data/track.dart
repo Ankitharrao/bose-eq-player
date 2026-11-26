@@ -4,7 +4,8 @@ class Track {
 
   final String title;
 
-  /// An asset path ('assets/audio/test.mp3') or an absolute file path.
+  /// An asset path ('assets/audio/test.mp3') or, for a device track, the
+  /// original file's content:// URI.
   final String path;
   final bool isAsset;
 }
