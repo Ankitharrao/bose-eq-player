@@ -265,6 +265,20 @@ file URIs never reach the device log.
 
 **Device not starting flat.** See "Flat start and reset" above.
 
+**Equalizer silently detached (fixed).** In one release build the sliders
+moved but the sound never changed, on every track. Android's audio dump
+(`dumpsys media.audio_flinger`) showed the app's audio session with no
+equalizer attached at all. Cause: `just_audio` releases and rebuilds the
+native equalizer whenever Android gives the player a new audio session, using
+the settings captured when the player was created, and does not tell the Dart
+side. The app enabled the equalizer only after the player existed, so a
+rebuilt one came back disabled and at device defaults. Fix: the equalizer is
+marked enabled before the player is created, and `EqualizerController` listens
+to the player's audio-session stream and, on each change, re-enables the
+effect and rewrites every band. Verified with the same dump (equalizer
+attached and enabled through track changes, auto-advance, pause/resume and
+backgrounding) and by ear on the device.
+
 ## Run instructions
 
 Requirements: Flutter SDK, Android Studio, an Android device with USB debugging

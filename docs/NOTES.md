@@ -55,6 +55,12 @@ A running log of decisions and experiments. Feeds the README's "Challenges" sect
 ### Launcher icon
 - 2026-11-26: replaced the Flutter icon with original artwork: three EQ sliders with lime knobs on ink (no Bose marks). Rendered by `tool/icon/render_icon_test.dart` into `assets/icon/` (full icon, adaptive foreground, monochrome for Android 13 themed icons) and generated with `flutter_launcher_icons`. Checked on the device: shows in the launcher (themed when themed icons are on). App label changed from "bose_app" to "EQ Player" (AndroidManifest), matching the MaterialApp title; no Bose name in the label.
 
+### Equalizer silently detached
+- 2026-11-26: on a release build the EQ made no audible difference on any track (phone speaker). `dumpsys media.audio_flinger` showed the app's session (1850793) with 0 effect chains: no equalizer attached at all. Slider writes failed natively and were swallowed (release logs are off).
+- Cause found in just_audio 0.10.6 (`AudioPlayer.java`, `setAudioSessionId`): on every audio-session change it releases the effects and rebuilds them from the raw pipeline message captured when the player was created (`enabled` false in our order, since `eq.init()` enabled it afterwards). Dart is not told, so gains are lost too.
+- Fix: `EqualizerController` calls `setEnabled(true)` in its constructor (before the player exists, so the captured message says enabled), and listens to `engine.audioSessionIds`; on a change it re-enables and forces a rewrite of every band. Diagnostics added via `logDebug` (silent in release).
+- Verified: profile build logs + dumpsys show the equalizer attached and enabled through skip, device track, auto-advance, pause/resume, background/foreground and app restart; release build dumpsys likewise; by ear on the device: working. The exact trigger of the original session change was not reproduced.
+
 ## To do next
 - 2026-11-26: everything above verified on the device in a release build.
 - Record the demo video (5 minutes or less).
