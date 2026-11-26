@@ -60,7 +60,8 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
-    - assets/audio/
+    # Listed by file so untracked local test audio is never bundled.
+    - assets/audio/three_bands.m4a
   fonts:
     - family: SpaceGrotesk
       fonts:

@@ -10,8 +10,10 @@ class Track {
   final bool isAsset;
 }
 
-/// Tracks bundled with the app. Real, licensed tracks replace these later.
+/// Tracks bundled with the app. "Three Bands" is original, synthesized by
+/// `tool/make_demo_track.py` and public domain (CC0), so it is safe to ship.
+/// Its kick and bass, chords, and hats and bells sit in the Low, Mid and High
+/// bands, so each slider is easy to hear.
 const bundledTracks = <Track>[
-  Track(title: 'Test track 1', path: 'assets/audio/test.mp3'),
-  Track(title: 'Test track 2', path: 'assets/audio/test2.mp3'),
+  Track(title: 'Three Bands', path: 'assets/audio/three_bands.m4a'),
 ];
