@@ -58,6 +58,8 @@ classes consumed with `ListenableBuilder`.
 
 ## Architecture
 
+![EQ Player architecture: UI, logic, data and Android platform layers](docs/architecture.svg)
+
 ```
 lib/
   main.dart                       # creates the audio engine and EQ, then runs the app

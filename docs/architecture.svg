@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#C5F542"/>
+    </marker>
+    <style>
+      .box { fill: #141714; stroke: #262A25; stroke-width: 1.5; }
+      .key { fill: #141714; stroke: #C5F542; stroke-width: 1.5; }
+      .plat { fill: #0E110E; stroke: #262A25; stroke-width: 1.5; stroke-dasharray: 4 4; }
+      .title { fill: #F4F5F0; font-size: 16px; font-weight: 600; }
+      .file { fill: #C5F542; font-size: 11px; font-family: 'JetBrains Mono', Menlo, Consolas, monospace; }
+      .text { fill: #9A9D95; font-size: 12.5px; }
+      .layer { fill: #C5F542; font-size: 11px; font-weight: 600; letter-spacing: 2px; }
+      .edge { stroke: #C5F542; stroke-width: 1.75; fill: none; }
+      .tag { fill: #9A9D95; font-size: 11px; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="700" fill="#080A08"/>
+
+  <!-- Header -->
+  <circle cx="66" cy="50" r="6" fill="#C5F542"/>
+  <text x="84" y="57" fill="#F4F5F0" font-size="24" font-weight="700" font-family="'Space Grotesk', Inter, Helvetica, Arial, sans-serif">EQ Player</text>
+  <text x="212" y="57" fill="#9A9D95" font-size="24" font-family="'Space Grotesk', Inter, Helvetica, Arial, sans-serif">architecture</text>
+  <text x="1140" y="56" text-anchor="end" class="tag">Flutter · Android only · no state-management package</text>
+
+  <!-- ============ UI ============ -->
+  <text x="60" y="112" class="layer">UI · LIB/FEATURES</text>
+
+  <rect x="60" y="124" width="320" height="84" rx="16" class="box"/>
+  <text x="80" y="152" class="title">EQ sheet</text>
+  <text x="80" y="170" class="file">eq_panel.dart</text>
+  <text x="80" y="192" class="text">curve · presets · 3 sliders · reset</text>
+
+  <rect x="460" y="124" width="152" height="84" rx="16" class="box"/>
+  <text x="478" y="152" class="title">Player</text>
+  <text x="478" y="170" class="file">player_screen.dart</text>
+  <text x="478" y="192" class="text">seek · transport</text>
+
+  <rect x="628" y="124" width="152" height="84" rx="16" class="box"/>
+  <text x="646" y="152" class="title">Queue</text>
+  <text x="646" y="170" class="file">queue_sheet.dart</text>
+  <text x="646" y="192" class="text">play · swipe out</text>
+
+  <rect x="860" y="124" width="280" height="84" rx="16" class="box"/>
+  <text x="880" y="152" class="title">Add music</text>
+  <text x="880" y="170" class="file">add_music_button.dart</text>
+  <text x="880" y="192" class="text">system picker → queue</text>
+
+  <!-- UI → logic -->
+  <line x1="220" y1="208" x2="220" y2="282" class="edge" marker-end="url(#arrow)"/>
+  <line x1="536" y1="208" x2="536" y2="282" class="edge" marker-end="url(#arrow)"/>
+  <line x1="704" y1="208" x2="704" y2="282" class="edge" marker-end="url(#arrow)"/>
+  <line x1="1000" y1="208" x2="1000" y2="282" class="edge" marker-end="url(#arrow)"/>
+  <text x="230" y="250" class="tag">setGain · commit</text>
+  <text x="714" y="250" class="tag">commands</text>
+  <text x="1010" y="246" class="tag">pick</text>
+
+  <!-- ============ LOGIC + DATA ============ -->
+  <text x="60" y="274" class="layer">LOGIC · LIB/AUDIO</text>
+  <text x="860" y="274" class="layer">DATA · LIB/DATA</text>
+
+  <rect x="60" y="286" width="320" height="124" rx="16" class="key"/>
+  <text x="80" y="316" class="title">EqualizerController</text>
+  <text x="80" y="334" class="file">lib/audio · ChangeNotifier</text>
+  <text x="80" y="358" class="text">3 sliders → 5 hardware bands</text>
+  <text x="80" y="378" class="text">writes the gain on release</text>
+  <text x="80" y="398" class="text">re-applies on a new session</text>
+
+  <rect x="460" y="286" width="320" height="124" rx="16" class="box"/>
+  <text x="480" y="316" class="title">AudioEngine</text>
+  <text x="480" y="334" class="file">lib/audio · ChangeNotifier</text>
+  <text x="480" y="358" class="text">track list · play · seek · next</text>
+  <text x="480" y="378" class="text">AudioFocusHandler:</text>
+  <text x="480" y="398" class="text">calls · other apps · unplug</text>
+
+  <rect x="860" y="286" width="280" height="124" rx="16" class="box"/>
+  <text x="880" y="316" class="title">DeviceLibrary</text>
+  <text x="880" y="334" class="file">lib/data</text>
+  <text x="880" y="358" class="text">pick · remember · forget</text>
+  <text x="880" y="378" class="text">original content:// URIs,</text>
+  <text x="880" y="398" class="text">never copied</text>
+
+  <!-- logic ↔ logic / data -->
+  <line x1="460" y1="348" x2="384" y2="348" class="edge" marker-end="url(#arrow)"/>
+  <text x="420" y="338" text-anchor="middle" class="tag">session</text>
+  <line x1="780" y1="348" x2="856" y2="348" class="edge" marker-end="url(#arrow)"/>
+  <text x="820" y="338" text-anchor="middle" class="tag">save</text>
+
+  <!-- ============ ANDROID ============ -->
+  <text x="60" y="466" class="layer">ANDROID PLATFORM</text>
+
+  <!-- logic/data → platform -->
+  <line x1="220" y1="410" x2="220" y2="494" class="edge" marker-end="url(#arrow)"/>
+  <line x1="536" y1="410" x2="536" y2="494" class="edge" marker-end="url(#arrow)"/>
+  <line x1="704" y1="494" x2="704" y2="410" class="edge" marker-end="url(#arrow)"/>
+  <line x1="926" y1="410" x2="926" y2="494" class="edge" marker-end="url(#arrow)"/>
+  <line x1="1074" y1="410" x2="1074" y2="494" class="edge" marker-end="url(#arrow)"/>
+  <text x="714" y="456" class="tag">focus events</text>
+
+  <rect x="60" y="498" width="320" height="76" rx="16" class="plat"/>
+  <text x="80" y="528" class="title">Android Equalizer</text>
+  <text x="80" y="552" class="text">native effect on the player's session</text>
+
+  <rect x="460" y="498" width="152" height="76" rx="16" class="plat"/>
+  <text x="478" y="528" class="title">just_audio</text>
+  <text x="478" y="552" class="text">ExoPlayer</text>
+
+  <rect x="628" y="498" width="152" height="76" rx="16" class="plat"/>
+  <text x="646" y="528" class="title">audio_session</text>
+  <text x="646" y="552" class="text">focus · noisy</text>
+
+  <rect x="860" y="498" width="132" height="76" rx="16" class="plat"/>
+  <text x="876" y="528" class="title">Doc picker</text>
+  <text x="876" y="552" class="file">MainActivity.kt</text>
+
+  <rect x="1008" y="498" width="132" height="76" rx="16" class="plat"/>
+  <text x="1024" y="528" class="title">Prefs</text>
+  <text x="1024" y="552" class="text">saved list</text>
+
+  <!-- pipeline -->
+  <line x1="460" y1="536" x2="384" y2="536" class="edge" marker-end="url(#arrow)"/>
+  <text x="420" y="526" text-anchor="middle" class="tag">pipeline</text>
+
+  <!-- Legend -->
+  <line x1="60" y1="628" x2="1140" y2="628" stroke="#262A25" stroke-width="1"/>
+  <line x1="60" y1="658" x2="96" y2="658" class="edge" marker-end="url(#arrow)"/>
+  <text x="108" y="662" class="tag">calls and data flow</text>
+  <rect x="250" y="648" width="22" height="20" rx="6" class="key"/>
+  <text x="284" y="662" class="tag">key component</text>
+  <rect x="404" y="648" width="22" height="20" rx="6" class="plat"/>
+  <text x="438" y="662" class="tag">platform / plugin</text>
+  <text x="1140" y="662" text-anchor="end" class="tag">The UI rebuilds from ChangeNotifier and streams (ListenableBuilder, StreamBuilder)</text>
+</svg>
