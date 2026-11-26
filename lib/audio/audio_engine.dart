@@ -69,6 +69,10 @@ class AudioEngine extends ChangeNotifier {
   Stream<Duration> get positionStream => _player.positionStream;
   Stream<Duration?> get durationStream => _player.durationStream;
   Stream<bool> get playingStream => _player.playingStream;
+
+  /// The Android audio session of the player; changes when Android hands
+  /// the player a new one. The equalizer must be re-applied when it does.
+  Stream<int?> get audioSessionIds => _player.androidAudioSessionIdStream;
   Stream<bool> get loadingStream => _player.processingStateStream.map(
     (s) => s == ProcessingState.loading || s == ProcessingState.buffering,
   );

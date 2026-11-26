@@ -18,10 +18,24 @@ enum EqBand { low, mid, high }
 ///
 /// [liveInterval] trades that off for comparison on a device: when set, the
 /// hardware is also written during a drag, at most once per interval.
+///
+/// just_audio rebuilds the native equalizer whenever Android gives the
+/// player a new audio session, from the settings it captured when the
+/// player was created, and does not tell the Dart side. So the effect is
+/// marked enabled before the player exists (the constructor), and on every
+/// session change it is enabled again and all gains are rewritten
+/// ([audioSessionIds]).
 class EqualizerController extends ChangeNotifier {
-  EqualizerController(this._equalizer);
+  EqualizerController(this._equalizer, {Stream<int?>? audioSessionIds}) {
+    // Before the player is created this only records the flag, so the
+    // effect is created enabled, including when just_audio rebuilds it.
+    unawaited(_equalizer.setEnabled(true));
+    _sessionSub = audioSessionIds?.distinct().listen(_onAudioSession);
+  }
 
   final AndroidEqualizer _equalizer;
+  StreamSubscription<int?>? _sessionSub;
+  int? _session;
   AndroidEqualizerParameters? _params;
 
   // Where each slider currently is (what the UI shows).
@@ -64,11 +78,30 @@ class EqualizerController extends ChangeNotifier {
   /// True when every slider is at 0 dB.
   bool get isFlat => _target.values.every((db) => db == 0);
 
+  /// A new audio session means a fresh native equalizer at device defaults:
+  /// enable it and write every band again.
+  Future<void> _onAudioSession(int? id) async {
+    final previous = _session;
+    _session = id;
+    logDebug('Equalizer: audio session $previous -> $id');
+    if (id == null || previous == null || _params == null) return;
+    try {
+      await _equalizer.setEnabled(true);
+    } catch (e) {
+      logDebug('Could not re-enable equalizer: $e');
+    }
+    for (final band in EqBand.values) {
+      _applied[band] = double.nan; // unknown: force a write
+    }
+    commit();
+  }
+
   /// Call once after the player is created.
   Future<void> init() async {
     try {
       await _equalizer.setEnabled(true);
       _params = await _equalizer.parameters;
+      logDebug('Equalizer ready: ${_params!.bands.length} bands');
       await reset(); // the device may not start flat
     } catch (e) {
       logDebug('Equalizer unavailable: $e');
@@ -184,6 +217,7 @@ class EqualizerController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _sessionSub?.cancel();
     _liveTimer?.cancel();
     super.dispose();
   }

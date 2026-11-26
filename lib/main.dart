@@ -14,7 +14,10 @@ Future<void> main() async {
   final library = DeviceLibrary();
   final saved = await library.load(); // tracks picked in earlier sessions
   final engine = AudioEngine([...bundledTracks, ...saved], library: library);
-  final eq = EqualizerController(engine.equalizer);
+  final eq = EqualizerController(
+    engine.equalizer,
+    audioSessionIds: engine.audioSessionIds,
+  );
   await engine.init();
   await eq.init(); // after the first track loads, as in the spike
 
