@@ -288,6 +288,11 @@ hear equalizer changes clearly.
   analysis, package and platform research, architecture planning, code drafts
   and debugging help. Package capabilities were checked against official
   documentation, and all code was run and tested by the author on a physical device.
+- **ChatGPT (OpenAI)** was used for documentation review (reading this README
+  critically and suggesting what to clarify or fix, such as how precisely the
+  EQ timing was described) and for explanations of technical concepts.
+  Suggestions were checked against the code and the device behaviour before
+  being applied.
 
 ## Credits
 
