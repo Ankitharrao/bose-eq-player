@@ -16,6 +16,7 @@ A running log of decisions and experiments. Feeds the README's "Challenges" sect
 - Five hardware bands, centres 60, 230, 910, 3600 and 14000 Hz. Range −15 to +15 dB.
 - Bands 0 and 4 reported +3 dB at startup, so the device does not start flat.
 - Decision: write 0 dB to every band on init, and make Reset do the same.
+- 2026-11-26: Reset verified on device; it restores a flat response.
 
 ### Mapping decision
 - Group hardware bands into Low / Mid / High by centre frequency (below 500 Hz, up to 2000 Hz, above), not by index, so the mapping holds on devices with a different band count.
@@ -33,20 +34,20 @@ A running log of decisions and experiments. Feeds the README's "Challenges" sect
 - `file_picker` 13 on Android uses the Storage Access Framework; by default it copies each picked file into the app cache and returns a `file://` path, so `setFilePath` works and no storage permission is needed.
 - Picked tracks are appended and the first plays. Not persisted across restarts (cache copies may be cleared by the OS).
 - Result on device: pending.
+- 2026-11-26: picked tracks vanished after closing the app, and the cache copies doubled the space each track used. Replaced `file_picker` with a platform channel in `MainActivity.kt`: `ACTION_OPEN_DOCUMENT` plus `takePersistableUriPermission`, so the app keeps the original file's `content://` URI and plays it in place (no copy). `DeviceLibrary` saves the list in `shared_preferences`; on launch it drops entries whose permission is gone and releases grants no entry uses. Removal releases the grant. Duplicate picks are skipped. Old `cache/file_picker` copies are deleted at startup. Release APK builds. Result on device: pending.
 
 ### Audio focus and headphone unplugging
 - just_audio handles interruptions by default, but silently and only after configuring the session on first play.
 - Decision: configure `AudioSessionConfiguration.music()` at startup, turn off `handleInterruptions`, and apply our own rules in `AudioFocusHandler` (pure, unit-tested). The UI shows a message when unplugging or another app stops playback.
 - Ducking is left to Android (automatic for media on 8+), as just_audio also does for media usage.
-- Result on device: pending (unplug wired headphones, disconnect Bluetooth, receive a call, start another music app).
+- Result on device: working (tested 2026-11-26).
 
 ### Removing device tracks, and the seek bar
-- Queue sheet lists all tracks; device tracks can be removed (trash or swipe). Bundled assets cannot. Removal deletes only the picker's cache copy.
+- Queue sheet lists all tracks; device tracks can be removed (trash or swipe). Bundled assets cannot. Removal forgets the track and releases its URI permission (originally: deleted the picker's cache copy).
 - When the last track is removed the player pauses rather than stops, so the equalizer effect in the pipeline survives.
 - Tried a waveform seek bar with `just_waveform`, then reverted it in favour of a simpler Material slider whose played part is an animated wave while playing (custom `WavyTrackShape`). The hand-built waveform control also needed its own screen-reader semantics, which had caused an assertion; a real `Slider` gets them from Flutter.
 - Result on device: pending (extraction speed on a long track, look of the bars).
 
 ## To do next
-- Check on device: new UI, crackle write modes, device file picking, audio focus, wavy seek bar, removing tracks.
-- Verify Reset EQ by ear and update the README checklist.
+- Check on device (release build): new UI, crackle write modes, device file picking and that picked tracks survive closing the app, wavy seek bar, removing tracks.
 - Add licensed bundled tracks and credits.

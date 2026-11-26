@@ -4,12 +4,14 @@ A Flutter music player with a real-time 3-band equalizer, built for the
 Bose Professional *Software Development Intern – Frontend Applications* challenge.
 
 > **Status: work in progress.** Implemented: playback of bundled tracks and
-> tracks picked from the device, a queue where device tracks can be removed,
+> tracks picked from the device (remembered across restarts, never copied),
+> a queue where device tracks can be removed,
 > the player screen (swipe gestures, animated wavy seek bar), the EQ sheet
 > (three sliders, presets and a response curve), and audio focus handling
 > (phone calls, other apps, headphone unplugging). The equalizer engine is
-> verified on a physical device; the latest UI, the crackle fix, file picking,
-> track removal and audio focus still need checking on the device. See the
+> verified on a physical device, as are Reset EQ and audio focus handling;
+> the latest UI, the crackle fix, file picking and track removal still need
+> checking on the device. See the
 > checklist below for exactly what works today.
 
 ## Target platform
@@ -32,8 +34,8 @@ Tested by ear on one device: **Samsung SM-S911B, Android 14**.
 | Show track name, elapsed time and total duration | Done |
 | Three EQ bands (Low, Mid, High), each with a slider | Done (EQ sheet, plus presets and a response curve); not yet re-checked on device |
 | EQ audibly changes the sound in real time | Verified on device |
-| Reset EQ restores a flat response | Implemented; verification pending |
-| Audio focus: pause for calls and other apps, pause on headphone unplug (extra) | Done, unit-tested; not yet checked on device |
+| Reset EQ restores a flat response | Verified on device |
+| Audio focus: pause for calls and other apps, pause on headphone unplug (extra) | Verified on device; unit-tested |
 | Clearly documented target platform | Done (this file) |
 | Demo video (5 minutes or less) | Not recorded yet |
 
@@ -43,8 +45,10 @@ Tested by ear on one device: **Samsung SM-S911B, Android 14**.
 |---|---|---|
 | `just_audio` | Playback and the Android equalizer effect | Yes |
 | `audio_session` | Audio focus: phone calls, headphone unplug | Yes |
-| `file_picker` | Choose tracks from device storage via the system picker | Yes |
-| `path_provider` | Locate the app cache, so removing a track deletes only its cached copy | Yes |
+| `shared_preferences` | Remember the list of tracks picked from the device | Yes |
+
+Picking itself uses Android's document picker through a small platform
+channel in `MainActivity.kt` rather than a package (see "Device file picking").
 
 Fonts (Space Grotesk and Inter, from Google Fonts) are bundled as assets rather
 than fetched at runtime, so the app renders identically offline. See each
@@ -80,6 +84,9 @@ lib/
     widgets/                      # band slider, response curve, top-bar EQ pill
   features/library/
     add_music_button.dart         # "+" button / empty-state button for picking
+  data/
+    track.dart                    # Track model, bundled track list
+    device_tracks.dart            # DeviceLibrary: pick, remember, forget
     queue_sheet.dart              # track list; remove device tracks
 test/                             # widget tests
 assets/
@@ -105,13 +112,17 @@ The separation of concerns:
   build-helper methods. The layout switches to artwork beside the controls at widths of 720 px and up.
 
 **Device file picking.** The "+" button opens Android's system picker
-(Storage Access Framework) filtered to audio, with multi-select. The picker
-copies each chosen file into the app's cache and hands back that copy's path,
-so the app needs no storage permission. Removing a device track from the
-queue deletes only that cache copy; the original file on the phone is never
-touched. Bundled tracks cannot be removed. Picked tracks are appended to the list
-and the first one starts playing; they are labelled "From device". They are
-not remembered after the app is closed.
+(`ACTION_OPEN_DOCUMENT`) filtered to audio, with multi-select. Nothing is
+copied: the app keeps each file's `content://` URI, takes a *persistable* read
+permission on it and plays the original in place, so picked tracks use no
+extra storage and no storage permission is needed. The list (title and URI)
+is saved in `shared_preferences` and restored on the next launch, after the
+app is closed or swiped away. Picking a file that is already in the queue
+plays it instead of adding it twice. Removing a device track from the queue
+forgets it and gives back the permission; the file on the phone is never
+touched. Bundled tracks cannot be removed. If a remembered file was deleted
+or its access revoked, it is dropped on the next launch. "Clear storage" in
+Android settings wipes the saved list, as it does for any app.
 
 **Audio focus and headphones.** At startup the app declares itself a music
 player to Android (`AudioSessionConfiguration.music()`), and playback requests
@@ -225,7 +236,8 @@ enabled (a physical device is recommended for judging the equalizer).
 git clone https://github.com/Ankitharrao/bose-eq-player.git
 cd bose-eq-player
 flutter pub get
-flutter run            # add --release for the most accurate audio behaviour
+flutter run --release  # release mode: the most accurate audio behaviour
+flutter build apk --release   # or build an APK: build/app/outputs/flutter-apk/app-release.apk
 flutter test           # widget tests
 ```
 
