@@ -44,7 +44,7 @@ The layers are strict:
 - Hardware band count and frequencies vary by device. Sliders map to hardware bands **by centre frequency** (Low < 500 Hz, Mid < 2000 Hz, High ≥ 2000 Hz), not by index. On the test device that gives Low = bands 0+1, Mid = band 2, High = bands 3+4.
 - The device does not start flat (bands 0 and 4 read +3 dB at startup), so init must call `reset()`.
 - The gain range comes from the device at runtime. If init fails, `isAvailable` is false and the UI must show an "EQ unavailable" state.
-- Crackle while dragging: coalescing updates and gain ramping did not fix it. The fix writes to the hardware only on release (verified by ear on the device). Do not reintroduce writes inside `onChanged`. The experiment log is in `docs/NOTES.md`.
+- Crackle while dragging: coalescing updates and gain ramping did not fix it. The fix writes to the hardware only on release (verified by ear on the device). Throttled live writes were compared by ear: 200 ms slight crackle, 100 ms worse, so don't make a live mode the default. Do not reintroduce writes inside `onChanged`. The experiment log is in `docs/NOTES.md`.
 
 ## Status / next steps (from docs/NOTES.md)
 

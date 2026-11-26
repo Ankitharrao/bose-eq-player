@@ -28,6 +28,8 @@ A running log of decisions and experiments. Feeds the README's "Challenges" sect
 - Not yet tried: applying the gain only when the finger lifts, smaller step sizes, a release build.
 - Cause unconfirmed. Zipper noise is the leading hypothesis.
 - Attempt 3, apply on release: sliders move freely in the UI and the hardware is written once, when the finger lifts (one `setGain` per hardware band, no ramp). The ramp from attempt 2 was removed because it adds a write every 20 ms. Trade-off: the sound changes on release, not during the drag. Result by ear (2026-11-26): no crackle; this is the shipped behaviour.
+- 2026-11-26, write modes compared by ear (profile build, Three Bands, headphones, Low and High dragged slowly and quickly): Release clean; 200 ms slight crackle; 100 ms worse; Live crackles. Crackle scales with write rate (zipper noise). Decision: keep Release as the default; a throttled live mode is not clean enough to ship.
+- 2026-11-26 (review feedback): README now states precisely that a drag updates the UI continuously but writes the native gain on release, while taps, presets, Reset and double-tap apply immediately; the trade-off was judged acceptable by ear on the device.
 - Comparison aid: run with `flutter run --profile --dart-define=EQ_COMPARE=true` (blocked in release builds since 2026-11-26) to show a picker in the EQ sheet: Release (default), 200 ms, 100 ms, Live (every movement).
 
 ### Device file picking

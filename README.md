@@ -31,7 +31,7 @@ Tested by ear on one device: **Samsung SM-S911B, Android 14**.
 | Play / pause, seek, next, previous | Verified on device |
 | Show track name, elapsed time and total duration | Verified on device |
 | Three EQ bands (Low, Mid, High), each with a slider | Verified on device (EQ sheet, plus presets and a response curve) |
-| EQ audibly changes the sound in real time | Verified on device |
+| EQ audibly changes the sound in real time | Verified on device: changes apply to the playing audio with no restart; a slider drag is applied when the finger lifts (see "How the EQ responds") |
 | Reset EQ restores a flat response | Verified on device |
 | Audio focus: pause for calls and other apps, pause on headphone unplug (extra) | Verified on device; unit-tested |
 | Clearly documented target platform | Done (this file) |
@@ -102,8 +102,9 @@ The separation of concerns:
   "Previous" restarts the current track if it has played for more than 3
   seconds. When a track ends, the next one starts.
 - **`EqualizerController`** owns the three slider values and applies them to
-  the hardware. Moving a slider only updates the UI; the hardware is written
-  when the slider is released (see "Challenges"). Presets set all three
+  the hardware. During a drag the slider, dB readout and response curve update
+  continuously, but the native gain is written once, when the finger lifts,
+  to avoid crackling (see "How the EQ responds"). Presets set all three
   sliders at once.
 - **`features/player/`** listens to the engine with `ListenableBuilder` and
   `StreamBuilder`. Widgets are split into small classes rather than
@@ -197,6 +198,23 @@ flat: bands 0 and 4 reported +3 dB before any gain was set. The controller
 therefore writes 0 dB to every hardware band on startup, and Reset does the
 same, so a flat response never depends on the device's initial state.
 
+**How the EQ responds.** The equalizer is a live effect on the playing audio:
+changes take effect without restarting, reloading or pausing the track. What
+happens, by action:
+
+| Action | Sound changes |
+|---|---|
+| Tap a point on a slider, tap a preset, Reset, double-tap a dB value | Immediately |
+| Drag a slider | When the finger lifts; the slider, dB value and curve follow the finger throughout |
+
+Writing the native gain continuously during a drag crackled on the test device
+(see "Challenges"), so the drag is applied once on release. In use, the new
+sound arrives the moment you let go; it does not sweep audibly while dragging.
+Continuous writing during a drag was tested by ear on the device at three
+rates (results under "Challenges"); every rate crackled, so applying on release
+is the only option that kept the audio clean. The change is still heard on the
+playing track the moment the finger lifts.
+
 **Limits.** The gain range is read from the device at runtime. If the device
 has no usable equalizer, the controller reports `isAvailable == false` so the
 UI can show an "EQ unavailable" state instead of crashing.
@@ -204,9 +222,10 @@ UI can show an "EQ unavailable" state instead of crashing.
 ## Challenges and known issues
 
 **Audible crackle while dragging an EQ slider (fixed).** On the test device,
-dragging a slider produces a crackling sound during movement. It does **not**
-occur when a slider is held still, including at high boosts, and does not occur
-with all sliders untouched. Two mitigations have been tried and neither removed it:
+writing the gain on every slider movement produced a crackling sound during the
+drag. It did **not** occur when a slider was held still, including at high
+boosts, or with all sliders untouched. Two mitigations were tried first and
+neither removed it:
 
 1. Coalescing updates so only the latest value per slider is sent to the phone.
 2. Ramping the hardware gain towards the target in small steps.
@@ -216,9 +235,23 @@ is the leading hypothesis.
 
 Fix (verified by ear on the device: no crackle): the hardware is no longer written
 during a drag. The slider moves freely and the new gain is applied once when the
-finger lifts, so the sound changes on release rather than continuously.
+finger lifts, so the sound changes on release rather than continuously. The
+cost is that a drag is not heard as a sweep; see "How the EQ responds".
 
-To compare write strategies by ear, run with
+Writing during the drag was then compared by ear on the device (Three Bands,
+headphones, slow and fast drags on Low and High):
+
+| Mode | Result |
+|---|---|
+| Release (shipped) | Clean |
+| Every 200 ms | Slight crackle |
+| Every 100 ms | Crackle, worse than 200 ms |
+| Every movement | Crackle (the original problem) |
+
+Crackle grows with the write rate, which fits the zipper-noise hypothesis: each
+gain write is an abrupt filter change. Release stays the default.
+
+To repeat the comparison, run with
 `flutter run --profile --dart-define=EQ_COMPARE=true` (profile mode performs
 like release). The EQ sheet then shows a picker: Release (default), every
 200 ms, every 100 ms, or on every movement. This is a testing aid: it is
