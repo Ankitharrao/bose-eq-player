@@ -27,14 +27,13 @@ A running log of decisions and experiments. Feeds the README's "Challenges" sect
 - Attempt 2, ramping the hardware gain toward the target at 0.75 dB per 20 ms: no change.
 - Not yet tried: applying the gain only when the finger lifts, smaller step sizes, a release build.
 - Cause unconfirmed. Zipper noise is the leading hypothesis.
-- Attempt 3, apply on release: sliders move freely in the UI and the hardware is written once, when the finger lifts (one `setGain` per hardware band, no ramp). The ramp from attempt 2 was removed because it adds a write every 20 ms. Trade-off: the sound changes on release, not during the drag. Result by ear: pending.
-- Comparison aid: run with `--dart-define=EQ_COMPARE=true` to show a picker in the EQ sheet: Release (default), 200 ms, 100 ms, Live (every movement). Results by ear per mode: pending.
+- Attempt 3, apply on release: sliders move freely in the UI and the hardware is written once, when the finger lifts (one `setGain` per hardware band, no ramp). The ramp from attempt 2 was removed because it adds a write every 20 ms. Trade-off: the sound changes on release, not during the drag. Result by ear (2026-11-26): no crackle; this is the shipped behaviour.
+- Comparison aid: run with `flutter run --profile --dart-define=EQ_COMPARE=true` (blocked in release builds since 2026-11-26) to show a picker in the EQ sheet: Release (default), 200 ms, 100 ms, Live (every movement).
 
 ### Device file picking
 - `file_picker` 13 on Android uses the Storage Access Framework; by default it copies each picked file into the app cache and returns a `file://` path, so `setFilePath` works and no storage permission is needed.
 - Picked tracks are appended and the first plays. Not persisted across restarts (cache copies may be cleared by the OS).
-- Result on device: pending.
-- 2026-11-26: picked tracks vanished after closing the app, and the cache copies doubled the space each track used. Replaced `file_picker` with a platform channel in `MainActivity.kt`: `ACTION_OPEN_DOCUMENT` plus `takePersistableUriPermission`, so the app keeps the original file's `content://` URI and plays it in place (no copy). `DeviceLibrary` saves the list in `shared_preferences`; on launch it drops entries whose permission is gone and releases grants no entry uses. Removal releases the grant. Duplicate picks are skipped. Old `cache/file_picker` copies are deleted at startup. Release APK builds. Result on device: pending.
+- 2026-11-26: picked tracks vanished after closing the app, and the cache copies doubled the space each track used. Replaced `file_picker` with a platform channel in `MainActivity.kt`: `ACTION_OPEN_DOCUMENT` plus `takePersistableUriPermission`, so the app keeps the original file's `content://` URI and plays it in place (no copy). `DeviceLibrary` saves the list in `shared_preferences`; on launch it drops entries whose permission is gone and releases grants no entry uses. Removal releases the grant. Duplicate picks are skipped. Old `cache/file_picker` copies are deleted at startup. Release APK builds. Result on device: working; tracks survive closing the app.
 
 ### Audio focus and headphone unplugging
 - just_audio handles interruptions by default, but silently and only after configuring the session on first play.
@@ -46,8 +45,11 @@ A running log of decisions and experiments. Feeds the README's "Challenges" sect
 - Queue sheet lists all tracks; device tracks can be removed (trash or swipe). Bundled assets cannot. Removal forgets the track and releases its URI permission (originally: deleted the picker's cache copy).
 - When the last track is removed the player pauses rather than stops, so the equalizer effect in the pipeline survives.
 - Tried a waveform seek bar with `just_waveform`, then reverted it in favour of a simpler Material slider whose played part is an animated wave while playing (custom `WavyTrackShape`). The hand-built waveform control also needed its own screen-reader semantics, which had caused an assertion; a real `Slider` gets them from Flutter.
-- Result on device: pending (extraction speed on a long track, look of the bars).
+- Result on device (2026-11-26): removal and the wavy seek bar work.
+
+### Bundled track
+- 2026-11-26: the two bundled test tracks were local files of unknown licence, not committed, so a fresh clone had no audio. Replaced them with "Three Bands", an original 61 s track synthesized by `tool/make_demo_track.py` (standard-library Python, fixed seed) and encoded to AAC with macOS `afconvert` (1.1 MB). Released as CC0. Kick and bass sit in the Low band, the chord pad in Mid, and hats and bells in High, so each slider is audible. `pubspec.yaml` lists the file rather than the folder, so untracked local audio is never bundled.
 
 ## To do next
-- Check on device (release build): new UI, crackle write modes, device file picking and that picked tracks survive closing the app, wavy seek bar, removing tracks.
-- Add licensed bundled tracks and credits.
+- 2026-11-26: everything above verified on the device in a release build.
+- Record the demo video (5 minutes or less).

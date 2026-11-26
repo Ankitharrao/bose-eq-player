@@ -3,16 +3,14 @@
 A Flutter music player with a real-time 3-band equalizer, built for the
 Bose Professional *Software Development Intern – Frontend Applications* challenge.
 
-> **Status: work in progress.** Implemented: playback of bundled tracks and
-> tracks picked from the device (remembered across restarts, never copied),
-> a queue where device tracks can be removed,
-> the player screen (swipe gestures, animated wavy seek bar), the EQ sheet
-> (three sliders, presets and a response curve), and audio focus handling
-> (phone calls, other apps, headphone unplugging). The equalizer engine is
-> verified on a physical device, as are Reset EQ and audio focus handling;
-> the latest UI, the crackle fix, file picking and track removal still need
-> checking on the device. See the
-> checklist below for exactly what works today.
+> **Status:** all features below are implemented and verified on a physical
+> device (Samsung SM-S911B, Android 14, release build): playback of the
+> bundled track and of tracks picked from the device (remembered across
+> restarts, never copied), a queue where device tracks can be removed, the
+> player screen (swipe gestures, animated wavy seek bar), the EQ sheet (three
+> sliders, presets, a response curve and Reset, with no crackle), and audio
+> focus handling (phone calls, other apps, headphone unplugging). Only the
+> demo video is still to come.
 
 ## Target platform
 
@@ -29,10 +27,10 @@ Tested by ear on one device: **Samsung SM-S911B, Android 14**.
 
 | Requirement | Status |
 |---|---|
-| Play bundled tracks or tracks picked from the device | Done (device picking not yet checked on device) |
-| Play / pause, seek, next, previous | Done |
-| Show track name, elapsed time and total duration | Done |
-| Three EQ bands (Low, Mid, High), each with a slider | Done (EQ sheet, plus presets and a response curve); not yet re-checked on device |
+| Play bundled tracks or tracks picked from the device | Verified on device (picked tracks persist across restarts) |
+| Play / pause, seek, next, previous | Verified on device |
+| Show track name, elapsed time and total duration | Verified on device |
+| Three EQ bands (Low, Mid, High), each with a slider | Verified on device (EQ sheet, plus presets and a response curve) |
 | EQ audibly changes the sound in real time | Verified on device |
 | Reset EQ restores a flat response | Verified on device |
 | Audio focus: pause for calls and other apps, pause on headphone unplug (extra) | Verified on device; unit-tested |
@@ -90,7 +88,7 @@ lib/
     queue_sheet.dart              # track list; remove device tracks
 test/                             # widget tests
 assets/
-  audio/                          # bundled tracks (placeholders, not committed)
+  audio/                          # three_bands.m4a: original demo track (CC0)
   fonts/                          # Space Grotesk, Inter
 ```
 
@@ -205,7 +203,7 @@ UI can show an "EQ unavailable" state instead of crashing.
 
 ## Challenges and known issues
 
-**Audible crackle while dragging an EQ slider (open).** On the test device,
+**Audible crackle while dragging an EQ slider (fixed).** On the test device,
 dragging a slider produces a crackling sound during movement. It does **not**
 occur when a slider is held still, including at high boosts, and does not occur
 with all sliders untouched. Two mitigations have been tried and neither removed it:
@@ -216,14 +214,20 @@ with all sliders untouched. Two mitigations have been tried and neither removed 
 The cause has not been confirmed. Zipper noise from abrupt filter-gain changes
 is the leading hypothesis.
 
-Current fix (verification by ear pending): the hardware is no longer written
+Fix (verified by ear on the device: no crackle): the hardware is no longer written
 during a drag. The slider moves freely and the new gain is applied once when the
 finger lifts, so the sound changes on release rather than continuously.
 
 To compare write strategies by ear, run with
-`flutter run --dart-define=EQ_COMPARE=true`. The EQ sheet then shows a picker:
-Release (default), every 200 ms, every 100 ms, or on every movement. See
+`flutter run --profile --dart-define=EQ_COMPARE=true` (profile mode performs
+like release). The EQ sheet then shows a picker: Release (default), every
+200 ms, every 100 ms, or on every movement. This is a testing aid: it is
+compiled out of release builds even if the flag is passed. See
 `docs/NOTES.md` for the experiment log.
+
+**No logging in release.** Diagnostic messages go through `logDebug`
+(`lib/core/log.dart`), which is silent in release builds, so track names and
+file URIs never reach the device log.
 
 **Device not starting flat.** See "Flat start and reset" above.
 
@@ -241,9 +245,9 @@ flutter build apk --release   # or build an APK: build/app/outputs/flutter-apk/a
 flutter test           # widget tests
 ```
 
-Place two test tracks at `assets/audio/test.mp3` and `assets/audio/test2.mp3`
-(they are not committed to this repository; the list lives in `lib/data/track.dart`).
-Use headphones to hear equalizer changes clearly.
+The app works straight after cloning: it ships one bundled track (see
+"Credits") and the "+" button adds music from the phone. Use headphones to
+hear equalizer changes clearly.
 
 ## AI tools used
 
@@ -254,4 +258,17 @@ Use headphones to hear equalizer changes clearly.
 
 ## Credits
 
-Bundled audio tracks and their licenses will be listed here when added.
+**"Three Bands"** (`assets/audio/three_bands.m4a`, 61 s), the bundled track,
+is original and was made for this project: every sound is synthesized from
+sine waves and noise by `tool/make_demo_track.py`, with no samples or
+third-party material. It is released into the public domain under
+[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). It is arranged
+to demonstrate the equalizer: kick drum and bass sit in the Low band, the chord
+pad in the Mid band, and hi-hats and a bell arpeggio in the High band.
+To regenerate it:
+
+```bash
+python3 tool/make_demo_track.py /tmp/three_bands.wav
+afconvert -f m4af -d aac -b 160000 /tmp/three_bands.wav assets/audio/three_bands.m4a
+```
+
